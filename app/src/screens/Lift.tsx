@@ -18,6 +18,7 @@ export default function Lift({ target }: { target?: LiftTarget | null }) {
   const [targetKey, setTargetKey] = useState(target?.key)
   const [planning, setPlanning] = useState(false)
   const [adding, setAdding] = useState(false)
+  const [showRest, setShowRest] = useState<boolean | null>(null)
 
   if (target && target.key !== targetKey) {
     setTargetKey(target.key)
@@ -30,14 +31,28 @@ export default function Lift({ target }: { target?: LiftTarget | null }) {
   if (open) return <ExerciseDetail key={open.id} exercise={open} repeat={repeat} onBack={() => { setOpenId(null); setRepeat(false) }} />
   if (planning) return <PlanWeek onBack={() => setPlanning(false)} />
 
-  const split = splitFor(store, localDate())
+  const today = localDate()
+  const split = splitFor(store, today)
   const groups = GROUPS.filter((g) => exercises.some((e) => e.muscle_group === g))
-  const shown = groups.filter((g) => !split.length || split.includes(g))
-  // Most recently trained first, then alphabetical
-  const lastDate = (e: Exercise) => (todaySession(store, e.id) ?? lastSession(store, e.id))?.local_date ?? ''
-  const inGroup = (g: MuscleGroup) => exercises
-    .filter((e) => e.muscle_group === g)
-    .sort((a, b) => lastDate(b).localeCompare(lastDate(a)) || a.name.localeCompare(b.name))
+  // Today's workout: exercises logged today, in the order they were done
+  const done = store.sessions
+    .filter((x) => x.local_date === today)
+    .sort((a, b) => a.performed_at.localeCompare(b.performed_at))
+    .map((x) => exercises.find((e) => e.id === x.exercise_id))
+    .filter((e): e is Exercise => !!e)
+  const doneIds = new Set(done.map((e) => e.id))
+  // Everything else in today's split (all groups when no split is picked); most recently trained first
+  const lastDate = (e: Exercise) => lastSession(store, e.id)?.local_date ?? ''
+  const rest = groups
+    .filter((g) => !split.length || split.includes(g))
+    .map((g) => [g, exercises
+      .filter((e) => e.muscle_group === g && !doneIds.has(e.id))
+      .sort((a, b) => lastDate(b).localeCompare(lastDate(a)) || a.name.localeCompare(b.name))] as const)
+    .filter(([, list]) => list.length)
+  const restCount = rest.reduce((n, [, list]) => n + list.length, 0)
+  // Open by default until something is logged, then collapsed so today's workout leads
+  const restOpen = showRest ?? done.length === 0
+  const openEx = (id: string) => { setOpenId(id); setRepeat(false) }
 
   return (
     <>
@@ -57,7 +72,7 @@ export default function Lift({ target }: { target?: LiftTarget | null }) {
         <>
           <select
             id="pick-exercise" aria-label="Choose exercise" value=""
-            onChange={(e) => { if (e.target.value) { setOpenId(e.target.value); setRepeat(false) } }}
+            onChange={(e) => { if (e.target.value) openEx(e.target.value) }}
           >
             <option value="">Choose exercise</option>
             {groups.map((g) => (
@@ -66,6 +81,15 @@ export default function Lift({ target }: { target?: LiftTarget | null }) {
               </optgroup>
             ))}
           </select>
+
+          <section className="group">
+            <h2 className="sec">Today’s workout</h2>
+            {done.length ? (
+              <div className="list">{done.map((e) => <ExerciseRow key={e.id} exercise={e} onOpen={() => openEx(e.id)} />)}</div>
+            ) : (
+              <p className="cap empty">Nothing logged yet today. Pick an exercise above or from your split below.</p>
+            )}
+          </section>
 
           <div className="hdr sec-row">
             <span className="sec">Today’s split</span>
@@ -77,19 +101,20 @@ export default function Lift({ target }: { target?: LiftTarget | null }) {
             ))}
           </div>
 
-
-          {shown.map((g) => {
-            const list = inGroup(g)
-            if (!list.length) return null
-            return (
-              <section key={g} className="group">
-                <h2 className="sec">{g}</h2>
-                <div className="list">
-                  {list.map((e) => <ExerciseRow key={e.id} exercise={e} onOpen={() => { setOpenId(e.id); setRepeat(false) }} />)}
-                </div>
-              </section>
-            )
-          })}
+          {restCount > 0 && (
+            <button className="row disclose" aria-expanded={restOpen} onClick={() => setShowRest(!restOpen)}>
+              <span>{split.length ? 'Add from your split' : 'All exercises'} <span className="cap">({restCount})</span></span>
+              <span aria-hidden="true" className="chev">{restOpen ? '▴' : '▾'}</span>
+            </button>
+          )}
+          {restOpen && rest.map(([g, list]) => (
+            <section key={g} className="group">
+              <h2 className="sec">{g}</h2>
+              <div className="list">
+                {list.map((e) => <ExerciseRow key={e.id} exercise={e} onOpen={() => openEx(e.id)} />)}
+              </div>
+            </section>
+          ))}
         </>
       )}
 
@@ -106,7 +131,7 @@ function ExerciseRow({ exercise, onOpen }: { exercise: Exercise; onOpen: () => v
     <button className="row" onClick={onOpen}>
       <span className="row-main">
         <span>{exercise.name}</span>
-        <span className="cap">{today ? 'Done today' : shown ? fmtDate(shown.local_date) : 'Not logged yet'}</span>
+        <span className="cap">{today ? `${today.sets.length} ${today.sets.length === 1 ? 'set' : 'sets'} today` : shown ? fmtDate(shown.local_date) : 'Not logged yet'}</span>
       </span>
       {shown && <span className="num row-weights">{fmtSets(shown.sets)}</span>}
     </button>

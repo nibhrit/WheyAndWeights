@@ -97,6 +97,8 @@ nav.tabs svg { width: 22px; height: 22px; }
 /* Lists, chips, sections */
 .sec { margin: 6px 2px -4px; font-size: 13px; font-weight: 600; color: var(--steel); }
 .group { display: flex; flex-direction: column; gap: 10px; }
+.row.disclose { font-weight: 600; }
+.row.disclose .chev { color: var(--steel); font-size: 14px; }
 .list { display: flex; flex-direction: column; gap: 8px; }
 .row {
   display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%;
