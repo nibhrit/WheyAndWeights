@@ -420,3 +420,10 @@ nav.tabs { grid-template-columns: repeat(5, 1fr); }
   padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
 }
 .scanner-bar .btn { flex: 0 0 auto; }
+
+/* Reminders (TF-20) */
+.reminder-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.reminder-toggle { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.reminder-toggle input { width: 22px; height: 22px; accent-color: var(--lift); flex: 0 0 auto; }
+.reminder-toggle > span { display: flex; flex-direction: column; }
+.reminder-row select { width: auto; height: 40px; flex: 0 0 auto; }

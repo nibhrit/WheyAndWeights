@@ -146,3 +146,21 @@ const uB=(await as(B,`select count(*)::int c from ai_food_usage`)).rows[0].c; uB
 try { await as(A, `update ai_food_usage set count=0`).then(r=>{ if (r.rows.length) throw 0 }); const after=(await as(A,`select count from ai_food_usage`)).rows[0].count; after===2?ok('ai usage: owner cannot reset own count'):bad('reset to '+after) } catch { ok('ai usage: owner cannot reset own count') }
 try { await as(A, `select public.ai_food_take('${A}','2026-10-24')`); bad('user called take') } catch { ok('ai usage: users cannot call the counter') }
 await db.exec('set role anon'); try { await db.query(`select public.ai_food_take('${A}','2026-10-24')`); bad('anon called take') } catch { ok('ai usage: anon cannot call the counter') } finally { await db.exec('reset role') }
+// Reminders (TF-20): devices and settings are owner-only; the sent log is server-only
+const EP='https://web.push.apple.com/abc123'
+await as(A, `insert into push_subscriptions(endpoint,p256dh,auth,device) values ('${EP}','${'p'.repeat(87)}','${'a'.repeat(22)}','iPhone')`)
+const psA=(await as(A,`select count(*)::int c from push_subscriptions`)).rows[0].c; psA===1?ok('push: A saves own device'):bad('A device '+psA)
+const psB=(await as(B,`select count(*)::int c from push_subscriptions`)).rows[0].c; psB===0?ok('push: B sees 0 of A\'s devices'):bad('B sees A devices')
+try { await as(B, `insert into push_subscriptions(user_id,endpoint,p256dh,auth) values ('${A}','https://x.example/1','${'p'.repeat(87)}','${'a'.repeat(22)}')`); bad('B wrote device as A') } catch { ok('push: B cannot add a device for A') }
+const pdB=await as(B, `delete from push_subscriptions returning id`); pdB.rows.length===0?ok('push: B delete touches 0 of A\'s devices'):bad('B deleted A device')
+try { await as(A, `insert into push_subscriptions(endpoint,p256dh,auth) values ('http://insecure/1','${'p'.repeat(87)}','${'a'.repeat(22)}')`); bad('http endpoint allowed') } catch { ok('push: only https endpoints') }
+await as(A, `insert into reminder_settings(time_zone,food_at) values ('Asia/Kolkata','21:30') on conflict (user_id) do update set food_at=excluded.food_at`)
+const rsA=(await as(A,`select food_at::text f, protein_at::text p, workout_on w from reminder_settings`)).rows[0]
+;(rsA.f==='21:30:00'&&rsA.p==='19:00:00'&&rsA.w===true)?ok('reminders: settings with defaults'):bad(JSON.stringify(rsA))
+try { await as(A, `update reminder_settings set food_at='21:10'`); bad('21:10 allowed') } catch { ok('reminders: times on the quarter hour only') }
+const rsB=(await as(B,`select count(*)::int c from reminder_settings`)).rows[0].c; rsB===0?ok('reminders: B sees 0 of A\'s settings'):bad('B sees A settings')
+await db.exec(`set role service_role`); await db.query(`insert into reminder_log(user_id,kind,local_date) values ('${A}','food','2026-11-01')`); await db.exec('reset role')
+try { await db.exec(`set role service_role`); await db.query(`insert into reminder_log(user_id,kind,local_date) values ('${A}','food','2026-11-01')`); bad('sent twice') } catch { ok('reminders: log allows one per kind per day') } finally { await db.exec('reset role') }
+const rlA=(await as(A,`select count(*)::int c from reminder_log`)).rows[0].c; rlA===0?ok('reminders: users cannot read the log'):bad('user read log')
+try { await as(A, `insert into reminder_log(user_id,kind,local_date) values ('${A}','protein','2026-11-01')`); bad('user wrote log') } catch { ok('reminders: users cannot write the log') }
+await db.exec('set role anon'); try { await db.query('select * from push_subscriptions'); bad('anon read devices') } catch { ok('push: anon cannot read devices') } finally { await db.exec('reset role') }

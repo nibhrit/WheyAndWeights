@@ -271,3 +271,35 @@ test('OFF record missing carbs or fat goes to the label form, keeping unknowns u
   assert.equal(junk.per100.fat_g, null)
   assert.deepEqual(rankPackaged([junk]).map((x) => x.code), ['2009876543213'])   // still listed: protein and kcal are there
 })
+
+// ---------- Reminders (TF-20) ----------
+import { dueKinds, localNow, messageFor } from '../../supabase/functions/send-reminders/shared.ts'
+
+test('reminders: local time in the person’s time zone', () => {
+  const t = new Date('2026-11-01T15:35:00Z')
+  assert.deepEqual(localNow('Asia/Kolkata', t), { date: '2026-11-01', minutes: 21 * 60 + 5 })   // 21:05 IST
+  assert.deepEqual(localNow('America/New_York', t), { date: '2026-11-01', minutes: 10 * 60 + 35 })
+  assert.deepEqual(localNow('Asia/Kolkata', new Date('2026-11-01T19:00:00Z')).date, '2026-11-02')   // 00:30 IST next day
+})
+
+test('reminders: due within 90 minutes of the time, once a day, only if switched on', () => {
+  const s = { time_zone: 'Asia/Kolkata', food_on: true, food_at: '21:00:00', protein_on: true, protein_at: '19:00:00', workout_on: false, workout_at: '18:00:00' }
+  assert.deepEqual(dueKinds(s, 20 * 60 + 29, []), ['protein'])
+  assert.deepEqual(dueKinds(s, 20 * 60 + 30, []), [])               // 90 minutes after 19:00: window closed
+  assert.deepEqual(dueKinds(s, 21 * 60, []), ['food'])               // protein's window (19:00–20:30) is over
+  assert.deepEqual(dueKinds(s, 19 * 60 + 15, ['protein']), [])       // already sent today
+  assert.deepEqual(dueKinds(s, 18 * 60, []), [])                     // workout switched off
+  assert.deepEqual(dueKinds({ ...s, protein_at: '20:00:00' }, 21 * 60 + 15, []), ['protein', 'food'])
+  assert.deepEqual(dueKinds(s, 22 * 60 + 30, []), [])                // food's window closed at 22:30
+})
+
+test('reminders: only sent when still relevant', () => {
+  const f = { foods: 1, protein: 62, goal: 100, planned: true, trained: false }
+  assert.match(messageFor('food', f)!.body, /Only 1 food/)
+  assert.equal(messageFor('food', { ...f, foods: 2 }), null)
+  assert.equal(messageFor('protein', f)!.body, '62 of 100 g so far, 38 g to go.')
+  assert.equal(messageFor('protein', { ...f, protein: 100 }), null)
+  assert.equal(messageFor('workout', f)!.url, '/WheyAndWeights/?tab=lift')
+  assert.equal(messageFor('workout', { ...f, trained: true }), null)
+  assert.equal(messageFor('workout', { ...f, planned: false }), null)
+})

@@ -159,6 +159,14 @@ Note: v1 excluded calories *eaten*. Calories *burnt* is new v1.1 scope.
 
 Nutrients are copied onto each entry when logged, so later data corrections don't rewrite past days.
 
+## 6.8 v2: Phone reminders (TF-20)
+
+| ID | Requirement | Priority | Jira |
+|---|---|---|---|
+| R1 | Web Push reminders, only when still relevant: workout day (6 pm, split planned, nothing logged), protein check (7 pm, under goal), log your food (9 pm, fewer than 2 foods). Each on/off, time in 15-min steps, per person, in their time zone | P1 | TF-20 |
+| R2 | Settings → Reminders: turn on per device (permission from a tap), test notification, turn off; iPhone needs the app on the Home Screen (iOS 16.4+) | P1 | TF-20 |
+| R3 | Server job every 15 min (pg_cron → Edge Function), at most once per reminder per day, within 90 min of its time; expired devices removed | P1 | TF-20 |
+
 ## 7. Key user flows
 
 **Flow A: At the gym (P1)**
@@ -255,6 +263,8 @@ Every table carries `user_id`, and row-level security restricts each user to the
 | D15 | Packaged food data | **Open Food Facts, looked up live** (barcode from the phone; name search through a small server relay); never copied into the food list | Best open source of Indian packaged foods; ODbL share-alike would otherwise cover our whole list; the search service doesn't accept browser calls |
 | D16 | Bad or incomplete product records | Missing protein/kcal/carbs/fat → label form, prefilled, missing stays unknown; impossible or inconsistent numbers → warning; re-scan opens your corrected version | Crowd-sourced data is often incomplete (e.g. 0 kcal with 47 g protein); logging 0 for "unknown" would quietly corrupt macro totals |
 | D17 | Barcode reading on iPhone | ZXing (WebAssembly) via `barcode-detector`, loaded only when scanning, served from the app | Safari has no BarcodeDetector; a CDN would break offline use and add a third party |
+| D18 | Reminder conditions | **Only when still relevant**, checked on the server at send time (not scheduled in advance) | A reminder for something already done teaches people to ignore reminders |
+| D19 | Reminder delivery | Web Push from a Supabase Edge Function on a 15-min pg_cron schedule; VAPID private key and cron secret only in Supabase | No extra service to run; the app stays a static site on GitHub Pages |
 
 ---
 

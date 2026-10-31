@@ -26,7 +26,11 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 
 export default function App() {
   const session = useSession()
-  const [tab, setTab] = useState<Tab>('today')
+  // A reminder opens the app on a tab (?tab=protein); otherwise Today
+  const [tab, setTab] = useState<Tab>(() => {
+    const t = new URLSearchParams(location.search).get('tab')
+    return TABS.some((x) => x.id === t) ? (t as Tab) : 'today'
+  })
   const [showSettings, setShowSettings] = useState(false)
   const [liftTarget, setLiftTarget] = useState<LiftTarget | null>(null)
   const userId = session?.user.id

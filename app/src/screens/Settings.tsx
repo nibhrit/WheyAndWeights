@@ -6,6 +6,10 @@ import { localDate } from '../lib/dates'
 import { CalorieGoalSetting, FitnessGoalSetting, GoalSetting, SavedFoods } from '../components/ProteinSettings'
 import { PROTEIN_PER_KG, suggestedKcal } from '../lib/macros'
 import { getTheme, setTheme, type Theme } from '../lib/theme'
+import {
+  currentSubscription, disableReminders, enableReminders, loadReminderSettings, permission, pushSupport, saveReminderSettings, sendTest,
+  type ReminderSettings,
+} from '../lib/push'
 
 const FOOD_DATA_URL = 'https://github.com/nibhrit/WheyAndWeights/blob/main/product/FOOD_DATA.md'
 
@@ -51,6 +55,9 @@ export default function Settings({ session, onClose }: Props) {
         </div>
       </div>
 
+      <h2 className="sec">Reminders</h2>
+      <RemindersSetting />
+
       <h2 className="sec">Appearance</h2>
       <AppearanceSetting />
 
@@ -77,6 +84,101 @@ function AppearanceSetting() {
         ))}
       </div>
       <span className="cap">System follows your phone’s light or dark mode. Saved on this device.</span>
+    </div>
+  )
+}
+
+const REMINDERS: [key: 'workout' | 'protein' | 'food', label: string, when: string][] = [
+  ['workout', 'Workout day', 'if a split is planned and nothing is logged'],
+  ['protein', 'Protein check', 'if you’re under your protein goal'],
+  ['food', 'Log your food', 'if fewer than 2 foods are logged'],
+]
+// Every 15 minutes from 5 am to 11:45 pm (the server checks every 15 minutes)
+const TIMES = Array.from({ length: 76 }, (_, i) => {
+  const m = 5 * 60 + i * 15
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+})
+const label12 = (t: string) => {
+  const [h, m] = t.split(':').map(Number)
+  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`
+}
+
+// Phone reminders (TF-20): on/off for this device, which reminders and when (shared by all your devices), a test
+function RemindersSetting() {
+  const support = pushSupport()
+  const [on, setOn] = useState<boolean | null>(null)          // this device subscribed?
+  const [settings, setSettings] = useState<ReminderSettings | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [note, setNote] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (support !== 'ok') return
+    currentSubscription().then((s) => setOn(!!s && permission() === 'granted'))
+    loadReminderSettings().then(setSettings)
+  }, [support])
+
+  if (support === 'install') {
+    return (
+      <div className="card form">
+        <b>Add the app to your Home Screen first</b>
+        <span className="cap">On iPhone, reminders only work in the installed app: in Safari, tap Share → Add to Home Screen, then open Whey&amp;Weights from there and come back here.</span>
+      </div>
+    )
+  }
+  if (support === 'unsupported') return <p className="cap empty">This browser can’t show reminders.</p>
+
+  async function turnOn() {
+    setBusy(true); setNote(null)
+    const err = await enableReminders()
+    setBusy(false)
+    if (err) return setNote(err)
+    setOn(true)
+    setSettings(await loadReminderSettings())
+  }
+  async function turnOff() {
+    setBusy(true); setNote(null)
+    const err = await disableReminders()
+    setBusy(false)
+    if (err) setNote(err); else setOn(false)
+  }
+  async function change(patch: Partial<ReminderSettings>) {
+    if (!settings) return
+    const before = settings
+    setSettings({ ...settings, ...patch })
+    const err = await saveReminderSettings(patch)
+    if (err) { setSettings(before); setNote(err) }
+  }
+
+  if (on === null) return <p className="cap empty">Checking…</p>
+  return (
+    <div className="card form">
+      {!on ? (
+        <>
+          <span className="cap">Get a nudge on this device only when you’re falling behind: a planned workout not started, protein under goal, or food not logged.</span>
+          <button className="btn" disabled={busy} onClick={turnOn}>{busy ? 'Turning on…' : 'Turn on reminders'}</button>
+        </>
+      ) : settings && (
+        <>
+          {REMINDERS.map(([k, label, when]) => (
+            <div key={k} className="reminder-row">
+              <label className="reminder-toggle">
+                <input type="checkbox" checked={settings[`${k}_on`]} onChange={(e) => change({ [`${k}_on`]: e.target.checked })} />
+                <span><span>{label}</span><span className="cap">{when}</span></span>
+              </label>
+              <select aria-label={`${label} time`} value={settings[`${k}_at`].slice(0, 5)} disabled={!settings[`${k}_on`]}
+                onChange={(e) => change({ [`${k}_at`]: `${e.target.value}:00` })}>
+                {TIMES.map((t) => <option key={t} value={t}>{label12(t)}</option>)}
+              </select>
+            </div>
+          ))}
+          <span className="cap">Each one is sent at most once a day, and only if it’s still true at that time.</span>
+          <div className="two">
+            <button className="btn ghost" disabled={busy} onClick={async () => setNote(await sendTest())}>Send a test</button>
+            <button className="btn ghost" disabled={busy} onClick={turnOff}>Turn off here</button>
+          </div>
+        </>
+      )}
+      {note && <p className="cap" role="status" style={{ margin: 0 }}>{note}</p>}
     </div>
   )
 }

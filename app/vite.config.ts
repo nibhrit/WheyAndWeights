@@ -32,6 +32,8 @@ export default defineConfig({
         // Cache the app itself so it opens with no signal; data calls always go to the network
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
         navigateFallback: '/WheyAndWeights/index.html',
+        // Phone reminders (TF-20): show pushes, open the right tab on tap
+        importScripts: ['push-handler.js'],
         runtimeCaching: [
           {
             // The barcode reader (TF-38): 1 MB, so cached when first used rather than with the app
