@@ -1,0 +1,27 @@
+{
+ "brands": "Muscleblaze",
+ "code": "8906116956571",
+ "countries_tags": [
+  "en:india"
+ ],
+ "nutriments": {
+  "added-sugars_100g": 0,
+  "carbohydrates_100g": 19.012987012987,
+  "energy-kcal_100g": 386.857142857143,
+  "energy_100g": 1618.18181818182,
+  "fat_100g": 5.66233766233766,
+  "proteins_100g": 64.9350649350649,
+  "sugars_100g": 11.3246753246753
+ },
+ "nutrition_data": "on",
+ "nutrition_data_per": "100g",
+ "nutrition_data_prepared_per": "100g",
+ "product_name": "Muscleblaze Biozyme Whey",
+ "product_name_en": "Muscleblaze Biozyme Whey",
+ "product_quantity": 1750.0,
+ "product_quantity_unit": "g",
+ "quantity": "1.75kg",
+ "serving_quantity": 38.5,
+ "serving_quantity_unit": "g",
+ "serving_size": "38.5 g"
+}

@@ -1,0 +1,27 @@
+{
+ "brands": "Amul",
+ "code": "8901262153607",
+ "countries_tags": [
+  "en:india"
+ ],
+ "nutriments": {
+  "added-sugars_100g": 0,
+  "carbohydrates_100g": 6,
+  "energy-kcal_100g": 62,
+  "energy_100g": 260.95,
+  "fat_100g": 0.85,
+  "proteins_100g": 7.5,
+  "sugars_100g": 1.6
+ },
+ "nutrition_data": "on",
+ "nutrition_data_per": "100ml",
+ "nutrition_data_prepared_per": "100g",
+ "product_name": "Protein Lassi - Plain",
+ "product_name_en": "Protein Lassi - Plain",
+ "product_quantity": 200,
+ "product_quantity_unit": "ml",
+ "quantity": "200 ml",
+ "serving_quantity": 200,
+ "serving_quantity_unit": "ml",
+ "serving_size": "1 portion (200 ml)"
+}

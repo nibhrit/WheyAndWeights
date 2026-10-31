@@ -6,7 +6,7 @@ import fs from 'node:fs'
 import { buildIndex, foodUsage, normalize, searchFoods, squash, topFoods } from '../src/lib/foodSearch.ts'
 import { foodRef, nutrientsFor, portionGrams, portionText } from '../src/lib/nutrition.ts'
 import { macroTargets, suggestedKcal } from '../src/lib/macros.ts'
-import { aiFoodsFrom } from '../src/lib/myFoods.ts'
+import { myFoodsFrom } from '../src/lib/myFoods.ts'
 import { checkEstimate, normalizeQuery, requestFor, parseResponse } from '../../supabase/functions/estimate-food/shared.ts'
 import type { FoodDataset } from '../src/data/foods/schema.ts'
 
@@ -169,7 +169,7 @@ test('AI-estimated foods become searchable: newest wins, one serving = what was 
     id, food_id, label, logged_at: at, local_date: at.slice(0, 10), quick_add_id: null, grams, kcal,
     carbs_g: 10, fat_g: 5, fiber_g: null, added_sugar_g: 2, portion_label: null, portion_qty: null, portion_grams,
   })
-  const foods = aiFoodsFrom([
+  const foods = myFoodsFrom([
     e('a1', 'ai:c1', 'Soya chaap roll', '2026-10-20T12:00:00Z', 18, 400, 200),
     e('a2', 'ai:c1', 'Soya chaap roll', '2026-10-28T12:00:00Z', 20, 420, 200),   // newer: wins
     e('a3', 'ai:estimate', 'Office thali', '2026-10-25T12:00:00Z', 22, 700, 450),
@@ -182,4 +182,92 @@ test('AI-estimated foods become searchable: newest wins, one serving = what was 
   assert.deepEqual(nutrientsFor(roll, roll.portions[0].grams), { grams: 20, kcal: 420, carbs_g: 10, fat_g: 5, fiber_g: null, added_sugar_g: 2 })
   assert.match(foods[1].id, /^ai:e-/)
   assert.equal(searchFoods(buildIndex(foods), 'chaap')[0]?.name, 'Soya chaap roll')
+})
+
+// ---------- Packaged foods (Open Food Facts) ----------
+import { checkNumbers, fromOff, labelEntry, packPortions, productName, rankPackaged, validBarcode, type OffProduct } from '../src/lib/packaged.ts'
+const off = (code: string): OffProduct => JSON.parse(fs.readFileSync(new URL(`./fixtures/off/${code}.json`, import.meta.url), 'utf8'))
+
+test('barcodes: check digit, lengths', () => {
+  for (const ok of ['8901262150378', '8906116956571', '8904335602385', '96385074', '036000291452']) assert.equal(validBarcode(ok), true, ok)
+  for (const bad of ['8901262150377', '890126215037', 'abc', '', '123456789012345']) assert.equal(validBarcode(bad), false, bad)
+})
+
+test('OFF product → food: names, portions, nutrients', () => {
+  const bar = fromOff(off('8904335602385'))   // Yoga Bar Protein Bar, 1 bar (50 g)
+  assert.equal(bar.food.id, 'off:8904335602385')
+  assert.equal(bar.food.name, 'Yoga Bar Protein Bar')
+  assert.deepEqual(bar.food.portions, [{ label: '1 bar (50 g)', grams: 50, default: true }])
+  assert.deepEqual(nutrientsFor(bar.food, 50), { grams: 10, kcal: 181, carbs_g: 28, fat_g: 4, fiber_g: 4, added_sugar_g: 13 })
+  assert.deepEqual(bar.issues, [])
+  assert.equal(bar.india, true)
+
+  const whey = fromOff(off('8906116956571'))  // 38.5 g scoop; 1.75 kg tub is not offered as a portion
+  assert.equal(whey.food.name, 'Muscleblaze Biozyme Whey')
+  assert.deepEqual(whey.food.portions.map((p) => p.label), ['1 serving (38.5 g)'])
+  assert.equal(nutrientsFor(whey.food, 38.5).grams, 25)
+
+  const yog = fromOff(off('8906059635021'))   // serving 85 g, pack 90 g
+  assert.deepEqual(yog.food.portions.map((p) => [p.label, p.grams, !!p.default]), [['1 serving (85 g)', 85, true], ['1 pack (90 g)', 90, false]])
+
+  const lassi = fromOff(off('8901262153607')) // Amul Protein Lassi, ml
+  assert.equal(lassi.food.name, 'Amul Protein Lassi - Plain')
+  assert.equal(lassi.food.portions[0].label, '1 serving (200 ml)')
+  assert.match(lassi.food.notes ?? '', /ml/)
+  assert.equal(nutrientsFor(lassi.food, 200).grams, 15)
+})
+
+test('OFF data checks', () => {
+  assert.deepEqual(checkNumbers({ kcal: null, protein_g: 20, carbs_g: 1, fat_g: 1, fiber_g: null, added_sugar_g: null }), ['no_nutrition'])
+  assert.deepEqual(checkNumbers({ kcal: 0, protein_g: 46.7, carbs_g: 10, fat_g: 5, fiber_g: null, added_sugar_g: null }), ['energy'])
+  assert.deepEqual(checkNumbers({ kcal: 380, protein_g: 120, carbs_g: 10, fat_g: 5, fiber_g: null, added_sugar_g: null }), ['implausible', 'energy'])
+  assert.deepEqual(checkNumbers({ kcal: 35, protein_g: 3.5, carbs_g: 5, fat_g: 0.1, fiber_g: null, added_sugar_g: 0 }), [])
+  // kJ only → kcal
+  const kj = fromOff({ code: '96385074', product_name: 'Test', nutriments: { energy_100g: 1674, proteins_100g: 20, carbohydrates_100g: 50, fat_100g: 10 } })
+  assert.equal(Math.round(kj.food.per100g.kcal), 400)
+  assert.deepEqual(fromOff({ code: '96385074', nutriments: {} }).issues, ['no_name', 'no_nutrition'])
+  assert.equal(productName({ product_name: 'amul gold', brands: 'Amul' }), 'amul gold')
+  assert.equal(productName({ product_name: 'Greek Yogurt', brands: ['epigamia'] }), 'Epigamia Greek Yogurt')
+  assert.equal(packPortions({ serving_size: '1 heaped scoop of our finest whey blend (33 g)', serving_quantity: 33 })[0].label, '1 serving (33 g)')
+})
+
+test('packaged search ranking: nutrition only, clean records first, then India', () => {
+  const p = (code: string, india: boolean, kcal: number | null) => fromOff({ code, product_name: code, countries_tags: india ? ['en:india'] : [], nutriments: { 'energy-kcal_100g': kcal ?? undefined, proteins_100g: 10, carbohydrates_100g: 10, fat_100g: 5 } })
+  const ranked = rankPackaged([p('abroad', false, 125), p('missing', true, null), p('typo', true, 0), p('good', true, 125)])
+  assert.deepEqual(ranked.map((x) => x.code), ['good', 'abroad', 'typo'])
+})
+
+test('label form: per 100 g or per serving, eaten in servings or grams', () => {
+  const values = { grams: 20, kcal: 362, carbs_g: 55, fat_g: 9, fiber_g: 8, added_sugar_g: null }
+  const a = labelEntry({ name: 'Yoga Bar', code: '8904335602385', basis: 'per100', servingGrams: 50, values, amount: 1, unit: 'serving' })
+  assert.ok('n' in a)
+  assert.deepEqual(a.n, { grams: 10, kcal: 181, carbs_g: 28, fat_g: 5, fiber_g: 4, added_sugar_g: null })
+  assert.deepEqual(a.ref, { food_id: 'off:8904335602385', portion_label: '1 serving (50 g)', portion_qty: 1, portion_grams: 50 })
+  const b = labelEntry({ name: 'Protein Wafer!', code: null, basis: 'serving', servingGrams: 40, values: { ...values, grams: 10 }, amount: 60, unit: 'g' })
+  assert.ok('n' in b)
+  assert.equal(b.n.grams, 15)
+  assert.equal(b.ref.food_id, 'label:protein-wafer')
+  assert.equal(b.ref.portion_label, null)
+  assert.ok('error' in labelEntry({ name: '', code: null, basis: 'per100', servingGrams: null, values, amount: 50, unit: 'g' }))
+  assert.ok('error' in labelEntry({ name: 'X', code: null, basis: 'serving', servingGrams: null, values, amount: 1, unit: 'serving' }))
+  assert.ok('error' in labelEntry({ name: 'X', code: null, basis: 'per100', servingGrams: null, values: { ...values, grams: null, kcal: null }, amount: 50, unit: 'g' }))
+})
+
+test('scanned packs and label foods are remembered with the portion used', () => {
+  const base = { quick_add_id: null, local_date: '2026-10-30', carbs_g: 56, fat_g: 9, fiber_g: 8, added_sugar_g: 26 }
+  const foods = myFoodsFrom([
+    { ...base, id: 'e1', food_id: 'off:8904335602385', label: 'Yoga Bar Protein Bar', logged_at: '2026-10-30T10:00:00Z', grams: 20, kcal: 362, portion_label: '1 bar (50 g)', portion_qty: 2, portion_grams: 100 },
+    { ...base, id: 'e2', food_id: 'label:protein-wafer', label: 'Protein wafer', logged_at: '2026-10-29T10:00:00Z', grams: 15, kcal: 300, portion_label: null, portion_qty: null, portion_grams: 60 },
+  ])
+  assert.deepEqual(foods.map((f) => [f.name, f.source.name, f.portions[0].label, f.portions[0].grams]),
+    [['Yoga Bar Protein Bar', 'Open Food Facts', '1 bar (50 g)', 50], ['Protein wafer', 'Pack label', '1 serving', 60]])
+  assert.equal(nutrientsFor(foods[0], 50).grams, 10)
+})
+
+test('OFF record missing carbs or fat goes to the label form, keeping unknowns unknown', () => {
+  const junk = fromOff({ code: '2009876543213', product_name: 'snacks', nutriments: { 'energy-kcal_100g': 410, proteins_100g: 8 } })
+  assert.deepEqual(junk.issues, ['partial'])
+  assert.equal(junk.per100.carbs_g, null)
+  assert.equal(junk.per100.fat_g, null)
+  assert.deepEqual(rankPackaged([junk]).map((x) => x.code), ['2009876543213'])   // still listed: protein and kcal are there
 })

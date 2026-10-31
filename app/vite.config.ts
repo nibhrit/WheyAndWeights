@@ -34,6 +34,12 @@ export default defineConfig({
         navigateFallback: '/WheyAndWeights/index.html',
         runtimeCaching: [
           {
+            // The barcode reader (TF-38): 1 MB, so cached when first used rather than with the app
+            urlPattern: /\.wasm$/,
+            handler: 'CacheFirst',
+            options: { cacheName: 'barcode-reader', expiration: { maxEntries: 2 } },
+          },
+          {
             urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
             handler: 'CacheFirst',
             options: { cacheName: 'google-fonts', expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 } },

@@ -155,7 +155,7 @@ Note: v1 excluded calories *eaten*. Calories *burnt* is new v1.1 scope.
 | F1 | Curated food list (319 foods: Indian home cooking, basic ingredients, restaurant), per 100 g as eaten, household portions, source + confidence per food. Method: [FOOD_DATA.md](FOOD_DATA.md) | P0 | TF-37 |
 | F2 | Offline search over names + Hindi/regional aliases, typo-tolerant, recent foods first; portion picker (household unit × quantity, or grams) showing protein + kcal before logging | P0 | TF-22 |
 | F3 | Calorie target (history like the protein goal); calories eaten on Today and Food; Week shows eaten vs target vs burnt | P0 | TF-21 |
-| F4 | Packaged / branded foods via Open Food Facts (ODbL), kept separate from the curated list | P1 | TF-38 |
+| F4 | Packaged / branded foods via Open Food Facts (ODbL), kept separate from the curated list: scan a barcode (camera), search by name, type from the pack label when a product is missing or wrong; logged packs are remembered and searchable. Details: [FOOD_DATA.md §8](FOOD_DATA.md) | P1 | TF-38 |
 
 Nutrients are copied onto each entry when logged, so later data corrections don't rewrite past days.
 
@@ -252,6 +252,9 @@ Every table carries `user_id`, and row-level security restricts each user to the
 | D13 | Lifting calories | From sets (~3 min each) | No extra input; duration isn't tracked |
 | D14 | End of day card | Shows from 6 pm (or once a habit is logged / tile tapped) | Can't answer "did I avoid sugar today?" in the morning |
 | D4 | ± increments | **2.5 kg / 5 lb**, editable when typing | Matches the smallest common plate and dumbbell jumps |
+| D15 | Packaged food data | **Open Food Facts, looked up live** (barcode from the phone; name search through a small server relay); never copied into the food list | Best open source of Indian packaged foods; ODbL share-alike would otherwise cover our whole list; the search service doesn't accept browser calls |
+| D16 | Bad or incomplete product records | Missing protein/kcal/carbs/fat → label form, prefilled, missing stays unknown; impossible or inconsistent numbers → warning; re-scan opens your corrected version | Crowd-sourced data is often incomplete (e.g. 0 kcal with 47 g protein); logging 0 for "unknown" would quietly corrupt macro totals |
+| D17 | Barcode reading on iPhone | ZXing (WebAssembly) via `barcode-detector`, loaded only when scanning, served from the app | Safari has no BarcodeDetector; a CDN would break offline use and add a third party |
 
 ---
 

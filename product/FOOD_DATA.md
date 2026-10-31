@@ -14,7 +14,7 @@ Whey & Weights ships with a built-in list of about 330 foods, so you can log mea
 | **Indian Nutrient Databank (INDB)**, Jaacks et al., 2024, [GitHub](https://github.com/lindsayjaacks/Indian-Nutrient-Databank-INDB-), paper in *Current Developments in Nutrition* | Cross-check only | The paper is CC BY 4.0. The data repository has **no licence file**, and its ingredient data comes from IFCT, which needs ICMR-NIN permission | Not copied |
 | **Indian Food Composition Tables 2017 (IFCT)**, ICMR-National Institute of Nutrition | Cross-check only | Copyright ICMR-NIN. No open reuse licence | Not copied |
 | **USDA FNDDS (Survey foods, 2024)** | Cross-check of dish values (dal, roti, idli, dosa, samosa, biryani, naan) | Public domain (CC0) | Not copied |
-| **Open Food Facts** | Phase 2 (packaged foods), see section 8 | Database [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/), contents DbCL, images CC BY-SA | Not used yet |
+| **Open Food Facts** | Packaged foods, looked up live by barcode or name (section 8) | Database [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/), contents DbCL, images CC BY-SA | **Used live, not copied** |
 
 ### Why INDB is a cross-check rather than a source
 
@@ -136,7 +136,28 @@ Cross-check against other tables (kcal per 100 g, Whey & Weights / other):
    - Every food needs `added_sugar_g`. Either put the sugar in the recipe or set it on the ingredient's `SUG` entry.
 4. Bump `VERSION` in the generator.
 
-## 8. Phase 2: Open Food Facts (packaged foods)
+## 8. Open Food Facts (packaged foods)
+
+**How it's used (TF-38).** Scan a pack's barcode or search a product name on the Food tab. Products are looked up live
+from [Open Food Facts](https://world.openfoodfacts.org) and never copied into `foods.json`. Code: `app/src/lib/packaged.ts`
+(turning a record into a food, data checks), `app/src/lib/off.ts` (lookups), `supabase/functions/food-search` (name search relay).
+
+- **Barcode lookup** goes from the phone straight to Open Food Facts (15 lookups a minute per person; the app stays under 12).
+  Looked-up products are kept on the device (newest 100), so a re-scan works offline.
+- **Name search** goes through the `food-search` Edge Function, because the search service doesn't accept calls from a web
+  page (10 searches a minute; the app stays under 8 and only searches on a button press). Results without protein and
+  calories are dropped; products sold in India come first. Picking one fetches the full, current product.
+- **Portions** come from the pack: the serving as printed ("1 bar (50 g)") and the whole pack up to 600 g. ml are counted as grams.
+- **Data checks.** Missing protein or kcal, or missing carbs or fat → the label form opens, prefilled, so a missing number
+  stays unknown instead of becoming 0. Impossible values (over 100 g per 100 g, over 950 kcal) or kcal more than 25% (and
+  30 kcal) away from 4P + 4C + 9F → a warning on the card. Every product has "Numbers wrong? Type from label".
+- **Confidence.** Pack values are shown without "about" (they come from labels), unlike AI and restaurant estimates.
+  The checks above are the guard against bad records.
+- **Remembered.** Anything logged from a pack or label is searchable next time with the numbers you saved, and a re-scan
+  opens your saved version first, so a correction sticks.
+- **Credit** on product cards ("From Open Food Facts"), in packaged search results, in Settings, and here.
+
+### Background
 
 - **Licence.** The database is under ODbL 1.0 (attribution plus share-alike *for the database*), individual product data under DbCL, and images under CC BY-SA. Showing looked-up values in the app is a "produced work" and needs attribution ("Data from Open Food Facts, ODbL"). Storing a copied *subset* as our own database would put that subset under ODbL, so keep OFF data separate from `foods.json`.
 - **Data quality.** OFF is crowd-sourced. Expect missing nutrients, per-serving values entered as per-100 g, kJ/kcal mix-ups, and stale recipes. Validate on import: the energy check above, macros of 100 g or less, and a sanity check on the serving size. Show those foods as `estimate` unless the values are confirmed against the label.

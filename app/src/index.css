@@ -390,3 +390,32 @@ nav.tabs { grid-template-columns: repeat(5, 1fr); }
 .start-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .nudge-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }
 .nudge-card .btn { flex: 0 0 auto; }
+
+/* Packaged foods (TF-38) */
+.search-row { display: flex; gap: 8px; align-items: stretch; }
+.search-row .search { flex: 1; min-width: 0; }
+.scan-btn {
+  flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  min-width: 56px; border-radius: 12px; background: var(--lift-soft); color: var(--lift); font-size: 11px; font-weight: 600;
+}
+.scan-btn svg { width: 22px; height: 22px; }
+.warn { color: var(--ink); font-weight: 600; }
+.label-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.label-amount { display: flex; align-items: center; gap: 8px; }
+.small-input {
+  width: 5.5em; height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  font-family: var(--font); font-size: 16px; text-align: center;
+}
+.ai-name { display: flex; flex-direction: column; gap: 8px; }
+
+.scanner { position: fixed; inset: 0; z-index: 40; background: #000; display: flex; flex-direction: column; }
+.scanner-video { flex: 1; min-height: 0; width: 100%; object-fit: cover; }
+.scanner-frame {
+  position: absolute; left: 10%; right: 10%; top: 32%; height: 22%; border: 3px solid #fff; border-radius: 16px;
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.35);
+}
+.scanner-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #000; color: #fff; font-size: 15px;
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+}
+.scanner-bar .btn { flex: 0 0 auto; }

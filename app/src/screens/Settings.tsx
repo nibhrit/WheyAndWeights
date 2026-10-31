@@ -36,7 +36,9 @@ export default function Settings({ session, onClose }: Props) {
       <CalorieGoalSetting current={kcalGoalFor(store, localDate())} suggested={suggestedKcal(goal, bodyKg(store).kg)} goal={goal} />
       <SavedFoods quickAdds={store.quickAdds} />
       <p className="cap empty">
-        Nutrition data: USDA FoodData Central (public domain). Dishes are Whey & Weights recipes from those ingredients; restaurant dishes are estimates. Approximate, not medical advice.{' '}
+        Nutrition data: USDA FoodData Central (public domain). Dishes are Whey & Weights recipes from those ingredients; restaurant dishes are estimates.
+        Packaged foods: <a href="https://world.openfoodfacts.org" target="_blank" rel="noreferrer" style={{ color: 'var(--lift)', fontWeight: 600 }}>Open Food Facts</a> (ODbL), looked up live.
+        Approximate, not medical advice.{' '}
         <a href={FOOD_DATA_URL} target="_blank" rel="noreferrer" style={{ color: 'var(--lift)', fontWeight: 600 }}>Food data sources</a>
       </p>
 

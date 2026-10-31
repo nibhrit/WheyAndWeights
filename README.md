@@ -20,6 +20,8 @@ It also tracks body weight over time and shows how consistently you log.
 
 Nutrition data: USDA FoodData Central (U.S. Department of Agriculture, Agricultural Research Service; public domain, CC0 1.0), https://fdc.nal.usda.gov. Dish values are Whey & Weights standard recipes calculated from these ingredients; some foods are Whey & Weights estimates. Values are approximate and are not medical advice. Methodology: [product/FOOD_DATA.md](product/FOOD_DATA.md).
 
+Packaged foods: [Open Food Facts](https://world.openfoodfacts.org), looked up live by barcode or name (database under the [Open Database License](https://opendatacommons.org/licenses/odbl/1-0/), contents under the Database Contents License). Not copied into the app's food list.
+
 ## Stack
 
 | Layer | Choice |
