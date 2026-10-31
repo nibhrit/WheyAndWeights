@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { goalFor, groupsOn, habitsOn, kcalEatenOn, kcalGoalFor, kcalOn, lastSession, proteinTotal, todaySession, useStore } from '../data/store'
+import { groupsOn, habitsOn, lastSession, todaySession, useStore } from '../data/store'
 import { GROUPS, type Exercise } from '../data/types'
-import { fmtDate, localDate } from '../lib/dates'
+import { addDays, fmtDate, fmtDay, localDate } from '../lib/dates'
 import { fmtSets } from '../lib/format'
 import Header from '../components/Header'
 import QuickAdds from '../components/QuickAdds'
 import HabitsCard from '../components/HabitsCard'
+import { HabitsTile, KcalTile, ProteinTile } from '../components/DayTiles'
+import PastDay from './PastDay'
 
 type Props = {
   onOpenExercise: (id: string, repeat: boolean) => void
@@ -14,6 +16,10 @@ type Props = {
 }
 
 const EVENING_HOUR = 18 // the End of day card appears from 6 pm
+const LOOK_BACK = 7     // past days you can open from the date
+
+const dayLabel = (d: string, today: string) =>
+  d === today ? 'Today' : d === addDays(today, -1) ? 'Yesterday' : `${fmtDay(d)} ${fmtDate(d)}`
 
 export default function Today({ onOpenExercise, onGoToLift, onGoToProtein }: Props) {
   const store = useStore()
@@ -22,6 +28,9 @@ export default function Today({ onOpenExercise, onGoToLift, onGoToProtein }: Pro
   const habits = habitsOn(store, today)
   const habitsDone = [habits.sugar, habits.junk_food].filter(Boolean).length
   const [showHabits, setShowHabits] = useState(false)
+  const [day, setDay] = useState<string | null>(null)   // null = today, even after midnight
+  const [picking, setPicking] = useState(false)
+  const viewing = day && day < today && day >= addDays(today, -LOOK_BACK) ? day : today
   const habitsVisible = showHabits || habitsDone > 0 || new Date().getHours() >= EVENING_HOUR
 
   // Exercises for today's split (or everything if no split yet) that have history, most recent first
@@ -35,15 +44,35 @@ export default function Today({ onOpenExercise, onGoToLift, onGoToProtein }: Pro
 
   return (
     <>
-      <Header title="Today" aside={new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} />
+      <Header
+        title={viewing === today ? 'Today' : viewing === addDays(today, -1) ? 'Yesterday' : new Date(`${viewing}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'long' })}
+        aside={
+          <button className="date-btn" aria-expanded={picking} onClick={() => setPicking(!picking)}>
+            {new Date(`${viewing}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} <span aria-hidden="true">▾</span>
+          </button>
+        }
+      />
+      {picking && (
+        <div className="chips" role="group" aria-label="Pick a day">
+          {Array.from({ length: LOOK_BACK + 1 }, (_, i) => addDays(today, -i)).map((d) => (
+            <button key={d} className="chip" aria-pressed={d === viewing} onClick={() => { setDay(d === today ? null : d); setPicking(false) }}>{dayLabel(d, today)}</button>
+          ))}
+        </div>
+      )}
 
+      {viewing !== today ? (
+        <>
+          <div className="past-note">
+            <span className="cap">Past day, view only</span>
+            <button className="link" onClick={() => setDay(null)}>Back to today</button>
+          </div>
+          <PastDay date={viewing} />
+        </>
+      ) : (<>
       <div className="tiles food">
-        <ProteinTile onOpen={onGoToProtein} />
-        <KcalTile onOpen={onGoToProtein} />
-        <button className="tile" onClick={() => setShowHabits(true)} aria-label={`Habits: ${habitsDone} of 2 logged today`}>
-          <span className="num tile-num habit-num">{habitsDone}<span className="tile-of">/2</span></span>
-          <span className="cap">habits</span>
-        </button>
+        <ProteinTile date={today} onOpen={onGoToProtein} />
+        <KcalTile date={today} onOpen={onGoToProtein} />
+        <HabitsTile date={today} onOpen={() => setShowHabits(true)} />
       </div>
 
       <QuickAdds />
@@ -81,47 +110,8 @@ export default function Today({ onOpenExercise, onGoToLift, onGoToProtein }: Pro
       )}
 
       {habitsVisible && <HabitsCard />}
+      </>)}
     </>
-  )
-}
-
-// Calories eaten today (graphite meter against the target, if set) and the estimated calories burnt.
-// Cardio vs lifting split of the burnt estimate is on the Week page.
-function KcalTile({ onOpen }: { onOpen: () => void }) {
-  const store = useStore()
-  const today = localDate()
-  const eaten = kcalEatenOn(store, today).total
-  const goal = kcalGoalFor(store, today)
-  const burnt = kcalOn(store, today).total
-  return (
-    <button className="tile" onClick={onOpen}
-      aria-label={`${eaten} kilocalories eaten${goal ? ` of ${goal}` : ''}, about ${burnt} burnt today`}>
-      <span className="num tile-num">{eaten}</span>
-      {goal && <span className="meter" aria-hidden="true"><span style={{ width: `${Math.min(eaten / goal, 1) * 100}%` }} /></span>}
-      <span className="cap">{goal ? `of ${goal} kcal` : 'kcal eaten'}</span>
-      <span className="cap">{burnt} burnt</span>
-    </button>
-  )
-}
-
-function ProteinTile({ onOpen }: { onOpen: () => void }) {
-  const store = useStore()
-  const today = localDate()
-  const total = proteinTotal(store, today)
-  const goal = goalFor(store, today)
-  const C = 2 * Math.PI * 40
-  const filled = Math.min(total / goal, 1) * C
-  return (
-    <button className="tile tile-ring" onClick={onOpen} aria-label={`Protein: ${total} of ${goal} grams`}>
-      <svg width="40" height="40" viewBox="0 0 100 100" aria-hidden="true">
-        <circle cx="50" cy="50" r="40" className="ring-track" style={{ strokeWidth: 14 }} />
-        {filled > 0 && <circle cx="50" cy="50" r="40" className="ring-fill" style={{ strokeWidth: 14 }} strokeDasharray={`${filled.toFixed(1)} ${C.toFixed(1)}`} transform="rotate(-90 50 50)" />}
-      </svg>
-      <span>
-        <span className="num tile-num">{total}<span className="tile-of"> g</span></span>
-        <span className="cap">{total >= goal ? 'goal hit' : `of ${goal} g`}</span>
-      </span>
-    </button>
   )
 }
 

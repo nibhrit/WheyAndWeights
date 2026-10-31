@@ -81,6 +81,8 @@ export const CARDIO_KINDS: [CardioKind, string][] = [
   ['swimming', 'Swimming'], ['other', 'Other'],
 ]
 export const cardioName = (k: CardioKind) => CARDIO_KINDS.find(([id]) => id === k)?.[1] ?? 'Cardio'
+export const EFFORTS: [Effort, string][] = [['easy', 'Easy'], ['moderate', 'Moderate'], ['hard', 'Hard']]
+export const effortName = (e: Effort) => EFFORTS.find(([id]) => id === e)![1]
 
 // Offered once on an empty list; approximate values, editable
 export const STARTER_FOODS: Pick<QuickAdd, 'name' | 'grams' | 'kcal'>[] = [ // kcal only; link them to the food list for full macros

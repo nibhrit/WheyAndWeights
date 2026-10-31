@@ -1,14 +1,12 @@
 import { useState } from 'react'
 import { bodyKg, cardioOn, deleteCardio, kcalOn, logCardio, updateCardio, useStore } from '../data/store'
-import { CARDIO_KINDS, cardioName, type Cardio as CardioEntry, type CardioKind, type Effort } from '../data/types'
+import { CARDIO_KINDS, EFFORTS, cardioName, effortName, type Cardio as CardioEntry, type CardioKind, type Effort } from '../data/types'
 import { fmtDate, localDate } from '../lib/dates'
 import { cardioKcal } from '../lib/calories'
 import Header from '../components/Header'
 
-const EFFORTS: [Effort, string][] = [['easy', 'Easy'], ['moderate', 'Moderate'], ['hard', 'Hard']]
 const QUICK_MINUTES = [15, 20, 30, 45]
 const toInt = (v: string) => (/^\d+$/.test(v.trim()) ? Number(v.trim()) : NaN)
-const effortName = (e: Effort) => EFFORTS.find(([id]) => id === e)![1]
 
 export default function Cardio() {
   const store = useStore()

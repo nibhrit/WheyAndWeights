@@ -6,6 +6,7 @@ import Header from '../components/Header'
 import { NO_FOOD, type Nutrients, type ProteinEntry } from '../data/types'
 import { localDate } from '../lib/dates'
 import { portionText } from '../lib/nutrition'
+import { macroLine, timeOf } from '../lib/format'
 import { isAiFood } from '../lib/aiEstimate'
 import { useFoods } from '../lib/useFoods'
 import { SettingsContext } from '../lib/settingsContext'
@@ -16,7 +17,6 @@ import MacrosPanel from '../components/MacrosPanel'
 
 // The Food tab (was "Protein"): protein ring + calories, one-tap saved foods, search the food list, today's entries.
 
-const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 
 export default function Protein() {
   const store = useStore()
@@ -159,15 +159,6 @@ function NutrientFields({ vals, onChange }: { vals: Vals; onChange: (v: Vals) =>
       ))}
     </div>
   )
-}
-
-// One line of macros under an entry, e.g. "C 82 · F 28 · fibre 8 · sugar 0 g"
-function macroLine(e: ProteinEntry) {
-  const parts = [
-    e.carbs_g != null && `C ${e.carbs_g}`, e.fat_g != null && `F ${e.fat_g}`,
-    e.fiber_g != null && `fibre ${e.fiber_g}`, e.added_sugar_g != null && `sugar ${e.added_sugar_g}`,
-  ].filter(Boolean)
-  return parts.length ? `${parts.join(' · ')} g` : null
 }
 
 // ---------- Today's entries ----------

@@ -98,6 +98,8 @@ nav.tabs svg { width: 22px; height: 22px; }
 .sec { margin: 6px 2px -4px; font-size: 13px; font-weight: 600; color: var(--steel); }
 .group { display: flex; flex-direction: column; gap: 10px; }
 .row.disclose { font-weight: 600; }
+.date-btn { color: var(--steel); font-size: 13px; padding: 10px 4px; min-height: 44px; }
+.past-note { display: flex; justify-content: space-between; align-items: center; background: var(--lift-soft); border-radius: 12px; padding: 0 12px; }
 .row.disclose .chev { color: var(--steel); font-size: 14px; }
 .list { display: flex; flex-direction: column; gap: 8px; }
 .row {
