@@ -2,9 +2,9 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// Served from https://<user>.github.io/TrackFit/ on GitHub Pages
+// Served from https://<user>.github.io/WheyAndWeights/ on GitHub Pages
 export default defineConfig({
-  base: '/TrackFit/',
+  base: '/WheyAndWeights/',
   plugins: [
     react(),
     VitePWA({
@@ -12,11 +12,11 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png', 'icon.svg'],
       manifest: {
-        name: 'TrackFit',
-        short_name: 'TrackFit',
+        name: 'Whey & Weights',
+        short_name: 'Whey&Weights',
         description: 'Last weights, protein and daily habits.',
-        start_url: '/TrackFit/',
-        scope: '/TrackFit/',
+        start_url: '/WheyAndWeights/',
+        scope: '/WheyAndWeights/',
         display: 'standalone',
         orientation: 'portrait',
         background_color: '#121517',
@@ -31,7 +31,7 @@ export default defineConfig({
       workbox: {
         // Cache the app itself so it opens with no signal; data calls always go to the network
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
-        navigateFallback: '/TrackFit/index.html',
+        navigateFallback: '/WheyAndWeights/index.html',
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,

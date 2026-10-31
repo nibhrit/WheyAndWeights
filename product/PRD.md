@@ -1,4 +1,4 @@
-# TrackFit — Product Requirements Document
+# Whey & Weights — Product Requirements Document
 
 | | |
 |---|---|
@@ -11,7 +11,7 @@
 
 ## 1. Summary
 
-TrackFit is a mobile-first web app that lets people who lift weights do three things:
+Whey & Weights is a mobile-first web app that lets people who lift weights do three things:
 
 1. **Instantly recall the weight they used last time** for any exercise or machine, right there in the gym.
 2. **Track daily protein intake against a goal** with a glanceable visual.
@@ -43,7 +43,7 @@ Existing apps (full nutrition trackers, workout planners, habit trackers) solve 
 - Uses a phone at the gym between sets; uses a laptop at other times
 - Currently tracks nothing, or tracks inconsistently in a notes app
 
-**v1 is built for a single user.** The architecture supports multiple users (see §9) so TrackFit can be opened to others later without a rewrite.
+**v1 is built for a single user.** The architecture supports multiple users (see §9) so Whey & Weights can be opened to others later without a rewrite.
 
 ---
 
@@ -162,19 +162,19 @@ Nutrients are copied onto each entry when logged, so later data corrections don'
 ## 7. Key user flows
 
 **Flow A: At the gym (P1)**
-1. Open TrackFit from the home screen. The **Lift** tab is one tap away.
+1. Open Whey & Weights from the home screen. The **Lift** tab is one tap away.
 2. Pick today's split once (e.g. Chest + Triceps). Tap an exercise from those groups, or use the **Choose exercise** dropdown. The screen shows **"Last: 12 Oct · 60 / 60 / 65 kg"**.
 3. Tap "Repeat last" or add sets. Each new set pre-fills the previous weight, so it can be adjusted with ± buttons.
 4. Done. The session is saved with today's date.
 
 **Flow B: After a meal (P2)**
-1. Open TrackFit. The home screen shows the protein ring: **"64 / 100 g · 36 g to go"**.
+1. Open Whey & Weights. The home screen shows the protein ring: **"64 / 100 g · 36 g to go"**.
 2. Tap a quick-add (e.g. "Whey scoop · 24 g"), or tap "+" and type grams.
 3. The ring updates immediately. An undo toast appears for a few seconds.
 
 
 **Flow C: Before bed (P3)**
-1. Open TrackFit. The **End of day** card sits at the bottom of Today.
+1. Open Whey & Weights. The **End of day** card sits at the bottom of Today.
 2. Tap **Avoided** or **Had it** for Sugar, then for Junk food. Done in two taps.
 
 ---

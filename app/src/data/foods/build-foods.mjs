@@ -221,7 +221,7 @@ ING.chaap = { ...blend([['soy_flour', 0.25], ['maida', 0.25]]), est: true }
 // ---------------------------------------------------------------------------
 const FDC_URL = (fdc) => `https://fdc.nal.usda.gov/food-details/${fdc}/nutrients`
 const USDA = (fdc) => ({ name: 'USDA FoodData Central (SR Legacy)', ref: `FDC ${fdc}`, url: FDC_URL(fdc) })
-const RECIPE_SRC = (id) => ({ name: 'TrackFit standard recipe, USDA FoodData Central ingredients', ref: `recipe:${id}` })
+const RECIPE_SRC = (id) => ({ name: 'Whey & Weights standard recipe, USDA FoodData Central ingredients', ref: `recipe:${id}` })
 const EST_SRC = (what) => ({ name: what })
 
 const r1 = (x) => Math.round(x * 10) / 10
@@ -270,7 +270,7 @@ function recipe({ id, name, aliases, cat = 'indian_home', ing, cooked, portions,
   add({
     id, name, aliases, category: cat, per100g: per100(n), portions,
     source: source ?? (cat === 'restaurant'
-      ? { name: 'TrackFit restaurant-style recipe estimate, USDA FoodData Central ingredients', ref: `recipe:${id}` }
+      ? { name: 'Whey & Weights restaurant-style recipe estimate, USDA FoodData Central ingredients', ref: `recipe:${id}` }
       : RECIPE_SRC(id)),
     confidence,
     notes,
@@ -311,20 +311,20 @@ usda('prawns-cooked', 'Prawns / shrimp, cooked', ['prawns', 'jhinga', 'shrimp'],
 
 // Vegetarian protein
 single('paneer', 'Paneer, full fat', ['paneer', 'cottage cheese', 'chhena'], 'paneer', [P('100 g', 100, true), P('1 cube (25 g)', 25), P('1 katori cubes', 120)], 'estimate',
-  EST_SRC('TrackFit estimate (typical Indian full-fat paneer)'), 'No open lab entry. Typical labels: 18-20 g protein, 20-25 g fat. FSSAI: moisture <=70%, fat >=50% of dry matter.')
+  EST_SRC('Whey & Weights estimate (typical Indian full-fat paneer)'), 'No open lab entry. Typical labels: 18-20 g protein, 20-25 g fat. FSSAI: moisture <=70%, fat >=50% of dry matter.')
 single('paneer-low-fat', 'Paneer, low fat', ['low fat paneer', 'skimmed paneer'], 'paneer_low', [P('100 g', 100, true)], 'estimate',
-  EST_SRC('TrackFit estimate (typical low-fat paneer label)'), 'Brands vary a lot; check your pack.')
+  EST_SRC('Whey & Weights estimate (typical low-fat paneer label)'), 'Brands vary a lot; check your pack.')
 usda('tofu-firm', 'Tofu, firm', ['tofu', 'soya paneer', 'bean curd'], 'tofu', [P('100 g', 100, true)])
 single('soya-chunks-dry', 'Soya chunks, dry', ['soya chunks', 'soya badi', 'nutrela', 'meal maker', 'soy chunks'], 'soya_chunks', [P('1 katori dry', 30, true), P('50 g dry', 50)], 'measured',
   USDA(174275), 'Values of USDA defatted soy flour; soya chunks are extruded defatted soy flour. Weigh dry: 30 g dry ~ 90 g soaked.')
 recipe({ id: 'soya-chaap-boiled', name: 'Soya chaap, plain (boiled sticks)', aliases: ['soya chaap', 'soya chap', 'soy chaap', 'chaap', 'chap', 'soya chaap stick', 'frozen soya chaap'], cat: 'basic',
   ing: [['chaap', 200]], cooked: 200, portions: [P('1 stick', 50, true), P('1 plate (~6 sticks)', 300)],
-  source: EST_SRC('TrackFit estimate: soy protein + wheat flour 1:1 (USDA defatted soy flour FDC 174275 + maida FDC 168894)'),
+  source: EST_SRC('Whey & Weights estimate: soy protein + wheat flour 1:1 (USDA defatted soy flour FDC 174275 + maida FDC 168894)'),
   notes: 'Assumes 1:1 soy flour : maida, boiled (~200 g per 100 g dry mix). Brands vary (12-20 g protein/100 g); stick weight excludes the wooden stick.' })
 single('whey-protein-concentrate', 'Whey protein, concentrate (generic)', ['whey', 'protein powder', 'whey protein', 'protein shake', 'whey scoop', 'protein scoop', 'scoop whey', '1 scoop whey'], 'whey', [P('1 scoop', 30, true), P('half scoop', 15)], 'estimate',
-  EST_SRC('TrackFit estimate (typical 80% whey concentrate label)'), 'Mixed with water. Brands range 70-80% protein; use your tub label for exact values.')
+  EST_SRC('Whey & Weights estimate (typical 80% whey concentrate label)'), 'Mixed with water. Brands range 70-80% protein; use your tub label for exact values.')
 add({ id: 'whey-protein-isolate', name: 'Whey protein, isolate (generic)', aliases: ['whey isolate', 'iso whey', 'protein powder'], category: 'basic',
-  per100g: { kcal: 370, protein_g: 88, carbs_g: 2, fat_g: 1, fiber_g: 0, added_sugar_g: 0 }, portions: [P('1 scoop', 30, true)], source: EST_SRC('TrackFit estimate (typical 90% whey isolate label)'), confidence: 'estimate', notes: 'Mixed with water. Use your tub label for exact values.' })
+  per100g: { kcal: 370, protein_g: 88, carbs_g: 2, fat_g: 1, fiber_g: 0, added_sugar_g: 0 }, portions: [P('1 scoop', 30, true)], source: EST_SRC('Whey & Weights estimate (typical 90% whey isolate label)'), confidence: 'estimate', notes: 'Mixed with water. Use your tub label for exact values.' })
 usda('peanut-butter', 'Peanut butter', ['peanut butter', 'pb', 'moongphali butter'], 'peanut_butter', [P('1 tbsp', 16, true), P('2 tbsp', 32)], 'Sweetened commercial style. Added sugar (5 g) estimated from USDA total sugars; unsweetened PB has ~0.')
 
 // Dairy
@@ -344,7 +344,7 @@ usda('greek-yogurt-nonfat', 'Greek yogurt, plain, nonfat', ['greek yogurt', 'gre
 usda('greek-yogurt-whole', 'Greek yogurt, plain, whole milk', ['greek yogurt', 'greek yoghurt', 'plain greek yogurt', 'hung curd'], 'greek_whole', [P('1 cup', 150, true), P('1 small tub', 100)])
 add({ id: 'greek-yogurt-flavoured', name: 'Greek yogurt, fruit flavoured', aliases: ['flavoured greek yogurt', 'flavored greek yogurt', 'greek yogurt', 'greek yoghurt', 'epigamia', 'fruit yogurt', 'mango greek yogurt', 'strawberry greek yogurt', 'blueberry greek yogurt'], category: 'basic',
   per100g: { kcal: 105, protein_g: 7.5, carbs_g: 13.5, fat_g: 2.4, fiber_g: 0.2, added_sugar_g: 8 }, portions: [P('1 cup', 90, true), P('1 large cup', 120)],
-  source: EST_SRC('TrackFit estimate (typical Indian flavoured Greek yogurt labels)'), confidence: 'estimate',
+  source: EST_SRC('Whey & Weights estimate (typical Indian flavoured Greek yogurt labels)'), confidence: 'estimate',
   notes: 'Fruit-flavoured Greek yogurt (e.g. mango, strawberry). Labels: ~11-12 g total sugar per 100 g, ~8 g of it added. Check your cup.' })
 usda('cheese-slice', 'Cheese slice (processed)', ['cheese', 'cheese slice', 'amul slice'], 'cheese', [P('1 slice', 20, true)])
 usda('mozzarella', 'Mozzarella cheese', ['mozzarella', 'pizza cheese'], 'mozzarella', [P('2 tbsp grated', 28, true)])
@@ -367,7 +367,7 @@ usda('rice-flour', 'Rice flour', ['chawal ka atta', 'rice flour'], 'rice_flour',
 single('poha-dry', 'Poha (flattened rice), dry', ['poha', 'aval', 'chivda', 'avalakki', 'chura'], 'poha', [P('1 cup dry', 60, true)], 'estimate',
   USDA(168877), 'Values of raw white rice; flattened rice has very similar macros.')
 single('makhana', 'Makhana (fox nuts), plain', ['makhana', 'fox nuts', 'lotus seeds', 'phool makhana'], 'makhana', [P('1 cup', 15, true), P('1 bowl', 30)], 'estimate',
-  EST_SRC('TrackFit estimate (Indian food-table values as commonly cited)'), 'Popped Euryale ferox seeds. Not in USDA; value as widely cited from ICMR-NIN tables, not verified against the printed table.')
+  EST_SRC('Whey & Weights estimate (Indian food-table values as commonly cited)'), 'Popped Euryale ferox seeds. Not in USDA; value as widely cited from ICMR-NIN tables, not verified against the printed table.')
 usda('bread-white', 'Bread, white', ['bread', 'double roti', 'sandwich bread', 'pav'], 'bread_white', [P('1 slice', 25, true), P('2 slices', 50)], 'Indian sandwich bread slice ~ 25 g. Added sugar estimated from USDA total sugars.')
 usda('bread-brown', 'Bread, brown / whole wheat', ['brown bread', 'atta bread', 'whole wheat bread'], 'bread_brown', [P('1 slice', 28, true), P('2 slices', 56)], 'Added sugar estimated from USDA total sugars.')
 usda('pasta-cooked', 'Pasta, cooked', ['pasta', 'macaroni', 'spaghetti'], 'pasta_cooked', [P('1 cup', 140, true), P('1 plate', 250)])
@@ -449,7 +449,7 @@ usda('oil-coconut', 'Coconut oil', ['nariyal tel', 'coconut oil'], 'coconut_oil'
 usda('oil-olive', 'Olive oil', ['olive oil'], 'olive_oil', [P('1 tsp', 5, true), P('1 tbsp', 14)])
 usda('sugar', 'Sugar', ['cheeni', 'shakkar', 'sugar'], 'sugar', [P('1 tsp', 5, true), P('1 tbsp', 13)])
 single('jaggery', 'Jaggery (gur)', ['gur', 'gud', 'jaggery', 'bellam', 'vellam'], 'jaggery', [P('1 small piece', 10, true)], 'estimate',
-  EST_SRC('TrackFit estimate (typical cane jaggery)'), 'Not in USDA; nearly all sugar.')
+  EST_SRC('Whey & Weights estimate (typical cane jaggery)'), 'Not in USDA; nearly all sugar.')
 usda('honey', 'Honey', ['shahad', 'madhu', 'honey'], 'honey', [P('1 tsp', 7, true), P('1 tbsp', 21)])
 usda('ketchup', 'Tomato ketchup', ['ketchup', 'tomato sauce'], 'ketchup', [P('1 tbsp', 15, true)], 'Added sugar = USDA total sugars minus tomato sugars (estimate).')
 usda('mayonnaise', 'Mayonnaise', ['mayo', 'mayonnaise'], 'mayo', [P('1 tbsp', 14, true)])

@@ -1,6 +1,6 @@
 # Food data: sources and method
 
-TrackFit ships with a built-in list of about 330 foods, so you can log meals by name and portion. You don't have to type grams of protein. This page covers where the numbers come from, how dish values were worked out, and how much to trust each one.
+Whey & Weights ships with a built-in list of about 330 foods, so you can log meals by name and portion. You don't have to type grams of protein. This page covers where the numbers come from, how dish values were worked out, and how much to trust each one.
 
 - Data file: `app/src/data/foods/foods.json`, which follows the contract in `app/src/data/foods/schema.ts`
 - Generator: `app/src/data/foods/build-foods.mjs`, which holds every ingredient value and recipe and writes `foods.json`
@@ -24,11 +24,11 @@ INDB is the best open collection of Indian recipes, but it has three problems fo
 2. Its recipe values are per 100 g of *raw* ingredients plus added water. It applies no cooking yield, so the figures are not per 100 g as eaten. For example, its cooked dals come out at 50–60 kcal per 100 g.
 3. Many deep-fried recipes count all the frying oil as eaten. Poori comes out at 738 kcal per 100 g and samosa at 577.
 
-TrackFit therefore recomputes Indian dishes from USDA ingredients, using cooked weights (section 3).
+Whey & Weights therefore recomputes Indian dishes from USDA ingredients, using cooked weights (section 3).
 
 ### Attribution (must appear in the app's About/Settings screen and the README)
 
-> Nutrition data: USDA FoodData Central (U.S. Department of Agriculture, Agricultural Research Service; public domain, CC0 1.0), https://fdc.nal.usda.gov. Dish values are TrackFit standard recipes calculated from these ingredients; some foods are TrackFit estimates. Values are approximate and are not medical advice.
+> Nutrition data: USDA FoodData Central (U.S. Department of Agriculture, Agricultural Research Service; public domain, CC0 1.0), https://fdc.nal.usda.gov. Dish values are Whey & Weights standard recipes calculated from these ingredients; some foods are Whey & Weights estimates. Values are approximate and are not medical advice.
 
 ## 2. What the numbers mean
 
@@ -60,9 +60,9 @@ Rules followed:
 - **Proxies.** Rohu and katla use USDA carp. Chana dal and desi chana use USDA chickpeas, which have slightly more fat. Methi leaves use spinach. Poha uses raw white rice. Soya chunks use defatted soy flour. Khoa uses whole-milk powder adjusted to about 15% moisture.
 - **Indian milks** are blends of USDA whole milk, skim milk and cream, mixed to FSSAI fat levels: full cream 6%, toned 3%, double toned 1.5%.
 
-Cross-check against other tables (kcal per 100 g, TrackFit / other):
+Cross-check against other tables (kcal per 100 g, Whey & Weights / other):
 
-| Dish | TrackFit | Other table |
+| Dish | Whey & Weights | Other table |
 |---|---|---|
 | Idli | 138 | INDB 137, FNDDS 128 |
 | Plain dosa | 215 | FNDDS 210 |
@@ -116,7 +116,7 @@ Cross-check against other tables (kcal per 100 g, TrackFit / other):
 ## 6. Known limitations
 
 - **Restaurant food is uncertain.** Oil, cream, butter and portion size vary 2–3 times between restaurants. A plate of biryani can be anywhere from 450 to 900 kcal.
-- **Paneer** has no open lab value. TrackFit uses 18.5 g protein and 22 g fat per 100 g, typical of full-fat paneer labels. Other tables give 15.9 g protein (USDA FNDDS) to 26 g (the Norwegian food table, which describes a drier pressed paneer). If you buy one brand, use its label.
+- **Paneer** has no open lab value. Whey & Weights uses 18.5 g protein and 22 g fat per 100 g, typical of full-fat paneer labels. Other tables give 15.9 g protein (USDA FNDDS) to 26 g (the Norwegian food table, which describes a drier pressed paneer). If you buy one brand, use its label.
 - **Added sugar in sweetened products** is derived from total sugars and is approximate (±2 g per 100 g). Sweets and restaurant desserts can vary by ±30%.
 - **Home oil use** is the biggest variable for calories in home dishes. Protein is much less affected.
 - **USDA ingredients are US samples.** Indian varieties (desi chana, local rice, buffalo-milk curd) differ by a few per cent.

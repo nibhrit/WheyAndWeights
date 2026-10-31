@@ -1,4 +1,4 @@
-# TrackFit
+# Whey & Weights
 
 A mobile-first fitness tracker for people who lift. It answers three everyday questions:
 
@@ -8,7 +8,7 @@ A mobile-first fitness tracker for people who lift. It answers three everyday qu
 
 It also tracks body weight over time and shows how consistently you log.
 
-**Live app:** https://nibhrit.github.io/TrackFit/ *(in development)*
+**Live app:** https://nibhrit.github.io/WheyAndWeights/ *(in development)*
 
 ## Product docs
 
@@ -18,7 +18,7 @@ It also tracks body weight over time and shows how consistently you log.
 
 ## Food data
 
-Nutrition data: USDA FoodData Central (U.S. Department of Agriculture, Agricultural Research Service; public domain, CC0 1.0), https://fdc.nal.usda.gov. Dish values are TrackFit standard recipes calculated from these ingredients; some foods are TrackFit estimates. Values are approximate and are not medical advice. Methodology: [product/FOOD_DATA.md](product/FOOD_DATA.md).
+Nutrition data: USDA FoodData Central (U.S. Department of Agriculture, Agricultural Research Service; public domain, CC0 1.0), https://fdc.nal.usda.gov. Dish values are Whey & Weights standard recipes calculated from these ingredients; some foods are Whey & Weights estimates. Values are approximate and are not medical advice. Methodology: [product/FOOD_DATA.md](product/FOOD_DATA.md).
 
 ## Stack
 

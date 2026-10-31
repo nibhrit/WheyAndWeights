@@ -6,7 +6,7 @@ import { localDate } from '../lib/dates'
 import { CalorieGoalSetting, FitnessGoalSetting, GoalSetting, SavedFoods } from '../components/ProteinSettings'
 import { PROTEIN_PER_KG, suggestedKcal } from '../lib/macros'
 
-const FOOD_DATA_URL = 'https://github.com/nibhrit/TrackFit/blob/main/product/FOOD_DATA.md'
+const FOOD_DATA_URL = 'https://github.com/nibhrit/WheyAndWeights/blob/main/product/FOOD_DATA.md'
 
 type Props = { session: Session; onClose: () => void }
 
@@ -35,7 +35,7 @@ export default function Settings({ session, onClose }: Props) {
       <CalorieGoalSetting current={kcalGoalFor(store, localDate())} suggested={suggestedKcal(goal, bodyKg(store).kg)} goal={goal} />
       <SavedFoods quickAdds={store.quickAdds} />
       <p className="cap empty">
-        Nutrition data: USDA FoodData Central (public domain). Dishes are TrackFit recipes from those ingredients; restaurant dishes are estimates. Approximate, not medical advice.{' '}
+        Nutrition data: USDA FoodData Central (public domain). Dishes are Whey & Weights recipes from those ingredients; restaurant dishes are estimates. Approximate, not medical advice.{' '}
         <a href={FOOD_DATA_URL} target="_blank" rel="noreferrer" style={{ color: 'var(--lift)', fontWeight: 600 }}>Food data sources</a>
       </p>
 

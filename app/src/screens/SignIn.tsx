@@ -37,7 +37,7 @@ export default function SignIn() {
     <div className="signin">
       <div className="signin-brand">
         <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" width="56" height="56" />
-        <h1>TrackFit</h1>
+        <h1>Whey & Weights</h1>
         <p className="cap">Last weights, protein and daily habits, on your phone and laptop.</p>
       </div>
 
@@ -55,7 +55,7 @@ export default function SignIn() {
       ) : (
         <form className="card form" onSubmit={verifyCode} noValidate>
           <p style={{ margin: 0 }}>Email sent to <b>{sentTo}</b>.</p>
-          <p className="cap" style={{ margin: 0 }}>Open the link in it, or type the code here. Use the code if you added TrackFit to your home screen.</p>
+          <p className="cap" style={{ margin: 0 }}>Open the link in it, or type the code here. Use the code if you added Whey & Weights to your home screen.</p>
           <label htmlFor="code">Code</label>
           <input
             id="code" inputMode="numeric" autoComplete="one-time-code" placeholder="123456" maxLength={10}

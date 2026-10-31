@@ -1,4 +1,4 @@
-# TrackFit — Design Direction
+# Whey & Weights — Design Direction
 
 **Direction:** *Chalk and plate.* The look comes from the gym itself: chalk-grey surfaces, graphite black, and the colour code of weight plates. It should feel like a gym tool, not a wellness app.
 
