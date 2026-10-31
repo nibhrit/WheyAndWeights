@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { addQuickAdd, useStore } from '../data/store'
 import type { FoodRef, Nutrients } from '../data/types'
 import type { Food, Portion } from '../data/foods/schema'
 import { localDate } from '../lib/dates'
-import { foodUsage, searchRanked, topFoods } from '../lib/foodSearch'
+import { buildIndex, foodUsage, searchRanked, topFoods } from '../lib/foodSearch'
+import { aiFoodsFrom } from '../lib/myFoods'
 import {
   GRAM_STEP, MAX_GRAMS, MAX_QTY, QTY_STEP, defaultPortion, fmtQty, foodRef, nutrientsFor, portionGrams, portionText,
 } from '../lib/nutrition'
@@ -39,6 +40,9 @@ export default function FoodFinder({ initialQuery = '', submitLabel, onDone, onC
   const [picked, setPicked] = useState<Chosen | null>(null)
   const [ai, setAi] = useState<{ estimate: AiEstimate; cacheId: string | null } | null>(null)
   const [aiState, setAiState] = useState<{ busy: boolean; error: string | null }>({ busy: false, error: null })
+  // Foods you've estimated with AI before are searchable alongside the list
+  const mine = useMemo(() => aiFoodsFrom([...store.protein, ...(store.aiFoods ?? [])]), [store.protein, store.aiFoods])
+  const mineIndex = useMemo(() => buildIndex(mine), [mine])
 
   const done = (n: Nutrients, ref: FoodRef, name: string) => { onDone(n, ref, name); setPicked(null); setAi(null); setQuery('') }
 
@@ -57,16 +61,20 @@ export default function FoodFinder({ initialQuery = '', submitLabel, onDone, onC
 
   const usage = foodUsage(store.protein, localDate())
   const q = query.trim()
-  const ranked = foods && q ? searchRanked(foods.index, query, usage) : []
+  const ranked = foods && q
+    ? [...searchRanked(mineIndex, query, usage), ...searchRanked(foods.index, query, usage)].sort((a, b) => a.score - b.score).slice(0, 8)
+    : []
+  const byId = (id: string) => foods?.foodById(id) ?? mine.find((f) => f.id === id)
   const results = !foods ? [] : q
     ? ranked.map((h) => h.food)
-    : focused ? topFoods(usage).map((id) => foods.foodById(id)).filter((f): f is Food => !!f) : []
+    : focused ? topFoods(usage).map(byId).filter((f): f is Food => !!f) : []
   const offerAi = !!foods && q.length >= MIN_AI_QUERY && (!ranked.length || ranked[0].score >= WEAK)
 
   // A recent food opens with the portion used last time
   function pick(food: Food) {
     const last = [...store.protein].reverse().find((e) => e.food_id === food.id)
-    const portion = last ? (last.portion_label ? food.portions.find((p) => p.label === last.portion_label) ?? null : null) : defaultPortion(food)
+    const portion = last?.portion_label ? food.portions.find((p) => p.label === last.portion_label) ?? null
+      : last && food.source.name !== 'AI estimate' ? null : defaultPortion(food)   // an AI food opens on "1 serving"
     const qty = last && (portion ? last.portion_qty : last.portion_grams) || (portion ? 1 : 100)
     setPicked({ food, portion, qty })
   }
@@ -113,7 +121,7 @@ function Result({ food, onPick }: { food: Food; onPick: (f: Food) => void }) {
     <button className="result" onClick={() => onPick(food)}>
       <span className="row-main">
         <span>{food.name} {about && <span className="about">about</span>}</span>
-        <span className="cap" style={{ textAlign: 'left' }}>{portion?.label ?? '100 g'}</span>
+        <span className="cap" style={{ textAlign: 'left' }}>{portion?.label ?? '100 g'}{food.source.name === 'AI estimate' ? ' · your AI estimate' : ''}</span>
       </span>
       <span className="cap">{n.grams} g · {n.kcal} kcal</span>
     </button>

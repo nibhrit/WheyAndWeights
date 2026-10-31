@@ -6,6 +6,7 @@ import fs from 'node:fs'
 import { buildIndex, foodUsage, normalize, searchFoods, squash, topFoods } from '../src/lib/foodSearch.ts'
 import { foodRef, nutrientsFor, portionGrams, portionText } from '../src/lib/nutrition.ts'
 import { macroTargets, suggestedKcal } from '../src/lib/macros.ts'
+import { aiFoodsFrom } from '../src/lib/myFoods.ts'
 import { checkEstimate, normalizeQuery, requestFor, parseResponse } from '../../supabase/functions/estimate-food/shared.ts'
 import type { FoodDataset } from '../src/data/foods/schema.ts'
 
@@ -161,4 +162,24 @@ test('AI request: structured output, fallback only where supported', () => {
   assert.deepEqual(parseResponse({ stop_reason: 'max_tokens', content: [{ type: 'text', text: '{"is' }] }), { ok: false, reason: 'truncated' })
   const good = parseResponse({ stop_reason: 'end_turn', content: [{ type: 'thinking' }, { type: 'text', text: JSON.stringify(est) }] })
   assert.ok(good.ok && good.output.kcal === 640)
+})
+
+test('AI-estimated foods become searchable: newest wins, one serving = what was logged', () => {
+  const e = (id: string, food_id: string | null, label: string, at: string, grams: number, kcal: number, portion_grams: number) => ({
+    id, food_id, label, logged_at: at, local_date: at.slice(0, 10), quick_add_id: null, grams, kcal,
+    carbs_g: 10, fat_g: 5, fiber_g: null, added_sugar_g: 2, portion_label: null, portion_qty: null, portion_grams,
+  })
+  const foods = aiFoodsFrom([
+    e('a1', 'ai:c1', 'Soya chaap roll', '2026-10-20T12:00:00Z', 18, 400, 200),
+    e('a2', 'ai:c1', 'Soya chaap roll', '2026-10-28T12:00:00Z', 20, 420, 200),   // newer: wins
+    e('a3', 'ai:estimate', 'Office thali', '2026-10-25T12:00:00Z', 22, 700, 450),
+    e('a4', 'dal-fry', 'Dal fry', '2026-10-25T12:00:00Z', 9, 180, 150),          // not AI: ignored
+  ])
+  assert.deepEqual(foods.map((f) => f.name), ['Soya chaap roll', 'Office thali'])
+  const roll = foods[0]
+  assert.equal(roll.id, 'ai:c1')
+  assert.equal(roll.confidence, 'estimate')
+  assert.deepEqual(nutrientsFor(roll, roll.portions[0].grams), { grams: 20, kcal: 420, carbs_g: 10, fat_g: 5, fiber_g: null, added_sugar_g: 2 })
+  assert.match(foods[1].id, /^ai:e-/)
+  assert.equal(searchFoods(buildIndex(foods), 'chaap')[0]?.name, 'Soya chaap roll')
 })

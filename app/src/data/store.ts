@@ -29,6 +29,7 @@ type State = {
   habits: Record<string, DayHabits>   // by date
   weights: BodyWeight[]               // oldest first
   cardio: Cardio[]                    // oldest first
+  aiFoods: ProteinEntry[]             // entries logged from AI estimates, any age (newest 300): makes them searchable
   pending: number       // changes saved on the device, not yet synced
 }
 
@@ -53,7 +54,7 @@ type Toast = { id: number; message: string; undo?: () => void }
 
 const EMPTY: State = {
   loaded: false, exercises: [], settings: { body_weight_unit: 'kg', fitness_goal: 'maintain' }, splits: {}, sessions: [],
-  protein: [], quickAdds: [], goals: [], kcalGoals: [], habits: {}, weights: [], cardio: [], pending: 0,
+  protein: [], quickAdds: [], goals: [], kcalGoals: [], habits: {}, weights: [], cardio: [], aiFoods: [], pending: 0,
 }
 
 let state: State = EMPTY
@@ -144,6 +145,11 @@ export async function loadForUser(id: string) {
     weights: applyWeightOutbox((bw.data as BodyWeight[]).map((w) => ({ ...w, weight: Number(w.weight) }))),
     cardio: applyCardioOutbox(cd.data as Cardio[]),
   })
+  // Not needed to show anything, so it doesn't hold up loading
+  const { data: ai, error: aiError } = await supabase.from('protein_entries')
+    .select(`id,label,quick_add_id,logged_at,local_date,${FOOD_COLS}`)
+    .like('food_id', 'ai:%').order('logged_at', { ascending: false }).limit(300)
+  if (!aiError && ai) set({ aiFoods: (ai as ProteinEntry[]).map(numericPortion) })
 }
 
 export function clearUser() {

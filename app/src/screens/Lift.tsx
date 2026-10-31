@@ -83,15 +83,6 @@ export default function Lift({ target }: { target?: LiftTarget | null }) {
             ))}
           </select>
 
-          <section className="group">
-            <h2 className="sec">{isToday ? 'Today’s workout' : `Workout · ${label}`}</h2>
-            {done.length ? (
-              <div className="list">{done.map((e) => <ExerciseRow key={e.id} exercise={e} onOpen={() => openEx(e.id)} />)}</div>
-            ) : (
-              <p className="cap empty">{isToday ? 'Nothing logged yet today.' : 'Nothing logged on this day.'} Pick an exercise above or from the split below.</p>
-            )}
-          </section>
-
           <div className="hdr sec-row">
             <span className="sec">{isToday ? 'Today’s split' : 'Split'}</span>
             <button className="link" onClick={() => setPlanning(true)}>Plan week</button>
@@ -101,6 +92,15 @@ export default function Lift({ target }: { target?: LiftTarget | null }) {
               <button key={g} className="chip" aria-pressed={split.includes(g)} onClick={() => toggleSplit(g, today)}>{g}</button>
             ))}
           </div>
+
+          <section className="group">
+            <h2 className="sec">{isToday ? 'Today’s workout' : `Workout · ${label}`}</h2>
+            {done.length ? (
+              <div className="list">{done.map((e) => <ExerciseRow key={e.id} exercise={e} onOpen={() => openEx(e.id)} />)}</div>
+            ) : (
+              <p className="cap empty">{isToday ? 'Nothing logged yet today.' : 'Nothing logged on this day.'} Pick an exercise above or from the split below.</p>
+            )}
+          </section>
 
           {restCount > 0 && (
             <button className="row disclose" aria-expanded={restOpen} onClick={() => setShowRest(!restOpen)}>
