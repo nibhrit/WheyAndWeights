@@ -548,6 +548,21 @@ export function updateEntry(id: string, patch: Partial<NewEntry>) {
   enqueue({ kind: 'protein_save', entry })
 }
 
+// Repeat a meal (TF-59): log copies of several entries to a day, as one action with one Undo
+export function logMeal(name: string, entries: ProteinEntry[], date = localDate()) {
+  const stamp = stampOn(date)
+  const copies: ProteinEntry[] = entries.map((e) => ({ ...e, id: crypto.randomUUID(), logged_at: stamp, local_date: date }))
+  let protein = state.protein
+  for (const c of copies) { protein = upsertEntry(protein, c); enqueue({ kind: 'protein_save', entry: c }) }
+  set({ protein })
+  const g = copies.reduce((n, c) => n + c.grams, 0)
+  showToast(`Logged ${name.toLowerCase()}: ${copies.length} foods · ${g} g protein`, () => {
+    const ids = new Set(copies.map((c) => c.id))
+    set({ protein: state.protein.filter((x) => !ids.has(x.id)) })
+    for (const c of copies) enqueue({ kind: 'protein_delete', id: c.id })
+  })
+}
+
 export function deleteProtein(id: string) {
   const e = state.protein.find((x) => x.id === id)
   if (!e) return

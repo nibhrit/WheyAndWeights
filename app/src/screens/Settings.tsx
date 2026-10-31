@@ -6,6 +6,7 @@ import { localDate } from '../lib/dates'
 import { CalorieGoalSetting, FitnessGoalSetting, GoalSetting, SavedFoods } from '../components/ProteinSettings'
 import { PROTEIN_PER_KG, suggestedKcal } from '../lib/macros'
 import { getTheme, setTheme, type Theme } from '../lib/theme'
+import { loadMisses, type MissSummary } from '../lib/misses'
 import {
   currentSubscription, disableReminders, enableReminders, loadReminderSettings, permission, pushSupport, saveReminderSettings, sendTest,
   type ReminderSettings,
@@ -39,6 +40,7 @@ export default function Settings({ session, onClose }: Props) {
       <GoalSetting current={goalFor(store, localDate())} suggested={Math.round(PROTEIN_PER_KG[goal] * bodyKg(store).kg)} />
       <CalorieGoalSetting current={kcalGoalFor(store, localDate())} suggested={suggestedKcal(goal, bodyKg(store).kg)} goal={goal} />
       <SavedFoods quickAdds={store.quickAdds} />
+      <FoodsNotFound />
       <p className="cap empty">
         Nutrition data: USDA FoodData Central (public domain). Dishes are Whey & Weights recipes from those ingredients; restaurant dishes are estimates.
         Packaged foods: <a href="https://world.openfoodfacts.org" target="_blank" rel="noreferrer" style={{ color: 'var(--lift)', fontWeight: 600 }}>Open Food Facts</a> (ODbL), looked up live.
@@ -180,5 +182,44 @@ function RemindersSetting() {
       )}
       {note && <p className="cap" role="status" style={{ margin: 0 }}>{note}</p>}
     </div>
+  )
+}
+
+const OUTCOME: Record<string, string> = { ai: 'AI', typed: 'typed', none: 'skipped' }
+
+// Searches that didn't find the food (TF-60): private to you; copy the list to share it for the next food update
+function FoodsNotFound() {
+  const [open, setOpen] = useState(false)
+  const [misses, setMisses] = useState<MissSummary[] | null | undefined>(undefined)
+  const [copied, setCopied] = useState(false)
+  useEffect(() => { if (open && misses === undefined) loadMisses().then(setMisses) }, [open, misses])
+  const text = (misses ?? []).map((m) => `${m.query}${m.times > 1 ? ` (${m.times}×)` : ''}`).join('\n')
+  return (
+    <>
+      <button className="row disclose" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span>Foods not found</span>
+        <span aria-hidden="true" className="chev">{open ? '▴' : '▾'}</span>
+      </button>
+      {open && (
+        <div className="card form">
+          {misses === undefined ? <span className="cap">Loading…</span>
+            : misses === null ? <span className="cap">Couldn’t load. Check your connection.</span>
+            : !misses.length ? <span className="cap">Nothing yet. Searches that don’t find a food show up here.</span>
+            : (
+              <>
+                <span className="cap">Searches from the last 60 days that didn’t find the food. Only you can see these.</span>
+                <div className="miss-list">
+                  {misses.slice(0, 30).map((m) => (
+                    <div key={m.query} className="hdr"><span>{m.query}</span><span className="cap">{m.times > 1 ? `${m.times}× · ` : ''}{m.outcomes.map((o) => OUTCOME[o]).join(', ')}</span></div>
+                  ))}
+                </div>
+                <button className="btn ghost" onClick={() => navigator.clipboard?.writeText(text).then(() => setCopied(true), () => {})}>
+                  {copied ? 'Copied' : 'Copy the list'}
+                </button>
+              </>
+            )}
+        </div>
+      )}
+    </>
   )
 }

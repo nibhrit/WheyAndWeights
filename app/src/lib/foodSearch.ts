@@ -71,12 +71,12 @@ function close(token: string, word: string) {
   return false
 }
 
-function rank(t: Form, q: Form): number | null {
+function rank(t: Form, q: Form, fuzzy = true): number | null {
   if (t.s === q.s) return 0
   if (t.s.startsWith(q.s)) return 1
   if (q.words.every((k) => t.words.some((w) => w.startsWith(k)))) return 2
   if (t.s.includes(q.s)) return 3
-  if (q.words.every((k) => t.words.some((w) => w.startsWith(k) || close(k, w)))) return 4
+  if (fuzzy && q.words.every((k) => t.words.some((w) => w.startsWith(k) || close(k, w)))) return 4
   return null
 }
 
@@ -88,7 +88,8 @@ export const searchFoods = (index: FoodIndex, query: string, usage: Record<strin
   searchRanked(index, query, usage, limit).map((h) => h.food)
 
 // With each hit's rank (0 exact … 4 typo; +0.5 when only an alias matched), e.g. to tell a good match from a weak one
-export function searchRanked(index: FoodIndex, query: string, usage: Record<string, number> = {}, limit = 8): { food: Food; score: number }[] {
+// fuzzy: allow typos (slower); off for very large lists
+export function searchRanked(index: FoodIndex, query: string, usage: Record<string, number> = {}, limit = 8, fuzzy = true): { food: Food; score: number }[] {
   if (!normalize(query)) return []
   const q = forms(query)
   const hits: { food: Food; score: number }[] = []
@@ -96,7 +97,7 @@ export function searchRanked(index: FoodIndex, query: string, usage: Record<stri
     let score = Infinity
     for (const t of index.terms[i]) {
       for (const k of [0, 1]) {
-        const r = rank(t.forms[k], q[k])
+        const r = rank(t.forms[k], q[k], fuzzy)
         if (r !== null) score = Math.min(score, r + (t.alias ? 0.5 : 0))
       }
     }
@@ -127,3 +128,37 @@ export function foodUsage(entries: Logged[], today: string): Record<string, numb
 // Shown before typing: foods logged recently, most used first
 export const topFoods = (usage: Record<string, number>, limit = 6) =>
   Object.entries(usage).sort((a, b) => b[1] - a[1]).slice(0, limit).map(([id]) => id)
+
+// ---------- One search for everything (TF-57) ----------
+// Your own foods (AI estimates, logged packs, labels), the food list, and packaged products, in one ranked list.
+// Packs rank after a generic food of the same match quality unless you typed their brand ("lassi" → lassi;
+// "amul lassi" → Amul's); your own foods win ties.
+
+export type Source = 'mine' | 'list' | 'pack'
+export type Hit = { food: Food; score: number; source: Source }
+
+const PACK_PENALTY = 0.75   // a pack ranks after a generic food that matches as well
+const BRAND_BONUS = -0.6    // typed the brand: its products beat generic foods that only list the brand as an alias
+const MAX_PACKS = 6
+
+export function brandTyped(query: string, brand: string | null): boolean {
+  if (!brand) return false
+  const q = normalize(query).split(' ')
+  const b = normalize(brand).split(' ')[0]
+  return !!b && q.includes(b)
+}
+
+export function searchAll(query: string, sources: {
+  mine?: FoodIndex; list?: FoodIndex; pack?: FoodIndex; brandOf?: (id: string) => string | null
+}, usage: Record<string, number> = {}, limit = 10): Hit[] {
+  const mine = sources.mine ? searchRanked(sources.mine, query, usage, 6).map((h) => ({ ...h, score: h.score - 0.1, source: 'mine' as const })) : []
+  const mineIds = new Set(mine.map((h) => h.food.id))
+  const list = sources.list ? searchRanked(sources.list, query, usage, 10).map((h) => ({ ...h, source: 'list' as const })) : []
+  const pack = sources.pack
+    ? searchRanked(sources.pack, query, usage, MAX_PACKS * 2, false)
+      .filter((h) => !mineIds.has(h.food.id))
+      .map((h) => ({ ...h, score: h.score + (brandTyped(query, sources.brandOf?.(h.food.id) ?? null) ? BRAND_BONUS : PACK_PENALTY), source: 'pack' as const }))
+      .slice(0, MAX_PACKS)
+    : []
+  return [...mine, ...list, ...pack].sort((a, b) => a.score - b.score).slice(0, limit)
+}

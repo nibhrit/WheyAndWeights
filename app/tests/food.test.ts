@@ -3,7 +3,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
-import { buildIndex, foodUsage, normalize, searchFoods, squash, topFoods } from '../src/lib/foodSearch.ts'
+import { buildIndex, foodUsage, normalize, searchAll, searchFoods, squash, topFoods } from '../src/lib/foodSearch.ts'
 import { foodRef, nutrientsFor, portionGrams, portionText } from '../src/lib/nutrition.ts'
 import { macroTargets, suggestedKcal } from '../src/lib/macros.ts'
 import { myFoodsFrom } from '../src/lib/myFoods.ts'
@@ -302,4 +302,45 @@ test('reminders: only sent when still relevant', () => {
   assert.equal(messageFor('workout', f)!.url, '/WheyAndWeights/?tab=lift')
   assert.equal(messageFor('workout', { ...f, trained: true }), null)
   assert.equal(messageFor('workout', { ...f, planned: false }), null)
+})
+
+// ---------- Repeat a meal (TF-59) ----------
+import { groupMeals, mealName, recentMeals } from '../src/lib/meals.ts'
+
+test('meals: entries within 45 minutes on a day are one meal; repeats shown once, newest first', () => {
+  const at = (d: string, hm: string) => new Date(`${d}T${hm}:00`).toISOString()
+  const e = (id: string, d: string, hm: string, label: string, grams: number) => ({
+    id, label, local_date: d, logged_at: at(d, hm), grams, kcal: grams * 10, quick_add_id: null, carbs_g: null, fat_g: null, fiber_g: null,
+    added_sugar_g: null, food_id: label.toLowerCase(), portion_label: '1 katori', portion_qty: 1, portion_grams: 150,
+  })
+  const entries = [
+    e('a', '2026-10-30', '13:00', 'Dal', 9), e('b', '2026-10-30', '13:20', 'Roti', 6), e('c', '2026-10-30', '14:00', 'Curd', 5),  // lunch (chained gaps ≤ 45)
+    e('d', '2026-10-30', '20:30', 'Paneer', 20),                                                                                    // single: not listed
+    e('f', '2026-10-31', '13:05', 'Dal', 9), e('g', '2026-10-31', '13:10', 'Roti', 6), e('h', '2026-10-31', '13:15', 'Curd', 5),  // same lunch again
+    e('i', '2026-10-31', '08:00', 'Eggs', 18), e('j', '2026-10-31', '08:10', 'Toast', 4),                                          // breakfast
+  ]
+  assert.equal(groupMeals(entries).length, 4)
+  assert.equal(mealName(at('2026-10-31', '08:00')), 'Breakfast')
+  assert.equal(mealName(at('2026-10-31', '17:00')), 'Snack')
+  assert.equal(mealName(at('2026-10-31', '23:30')), 'Dinner')
+  const recent = recentMeals(entries, '2026-10-25')
+  assert.deepEqual(recent.map((m) => [m.name, m.date, m.entries.length, m.grams]), [['Lunch', '2026-10-31', 3, 20], ['Breakfast', '2026-10-31', 2, 22]])
+  assert.equal(recentMeals(entries, '2026-10-31').length, 2)
+})
+
+test('one search: generic first unless the brand is typed; your foods win ties; a logged pack shows once', () => {
+  const full: FoodDataset = JSON.parse(fs.readFileSync(new URL('../src/data/foods/foods.json', import.meta.url), 'utf8'))
+  const pack = (code: string, name: string, brand: string) => fromOff({ code, product_name: name, brands: brand, nutriments: { 'energy-kcal_100g': 70, proteins_100g: 6, carbohydrates_100g: 8, fat_100g: 1.5 } }).food
+  const packs = [pack('8901262153607', 'Amul Protein Lassi', 'Amul'), pack('8906059635021', 'Epigamia Greek Yogurt', 'Epigamia')]
+  const brands: Record<string, string> = { 'off:8901262153607': 'Amul', 'off:8906059635021': 'Epigamia' }
+  const src = { list: buildIndex(full.foods), pack: buildIndex(packs), brandOf: (id: string) => brands[id] ?? null }
+  const lassi = searchAll('lassi', src)
+  assert.equal(lassi[0].source, 'list')
+  assert.ok(lassi.some((h) => h.food.name === 'Amul Protein Lassi'))
+  assert.deepEqual(searchAll('amul lassi', src).map((h) => h.food.name)[0], 'Amul Protein Lassi')
+  assert.equal(searchAll('epigamia', src)[0].food.name, 'Epigamia Greek Yogurt')
+  const mine = buildIndex([{ ...packs[1], source: { name: 'Open Food Facts' } }])
+  const greek = searchAll('epigamia greek', { ...src, mine })
+  assert.equal(greek.filter((h) => h.food.id === 'off:8906059635021').length, 1)
+  assert.equal(greek[0].source, 'mine')
 })

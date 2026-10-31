@@ -7,11 +7,13 @@ import { NO_FOOD, type Nutrients, type ProteinEntry } from '../data/types'
 import { useDay } from '../lib/dayContext'
 import { portionText } from '../lib/nutrition'
 import { macroLine, timeOf } from '../lib/format'
+import { recordMiss } from '../lib/misses'
 import { isAiFood } from '../lib/aiEstimate'
 import { useFoods } from '../lib/useFoods'
 import { SettingsContext } from '../lib/settingsContext'
 import ProteinSummary from '../components/ProteinRing'
 import QuickAdds from '../components/QuickAdds'
+import RepeatMeal from '../components/RepeatMeal'
 import FoodFinder, { PortionPicker } from '../components/FoodFinder'
 import MacrosPanel from '../components/MacrosPanel'
 
@@ -37,6 +39,7 @@ export default function Protein() {
         {macros && <MacrosPanel />}
       </div>
       <QuickAdds offerStarters />
+      <RepeatMeal />
       {unlinked > 0 && (
         <p className="cap nudge">
           {unlinked === 1 ? '1 saved food has' : `${unlinked} saved foods have`} no calories ·{' '}
@@ -77,13 +80,17 @@ function KcalLine() {
 
 function AddFood() {
   const { day } = useDay()
-  const [manual, setManual] = useState(false)
-  if (manual) return <ManualForm initialLabel="" onSearch={() => setManual(false)} />
+  const [manual, setManual] = useState<string | null>(null)   // the search text carried over as the name
+  if (manual !== null) return <ManualForm initialLabel={manual} onSearch={() => setManual(null)} />
   return (
     <FoodFinder
       submitLabel="Log" saveQuick
       onDone={(n, ref, name) => logFood({ ...n, ...ref, label: name }, day)}
-      footer={<button className="link" style={{ alignSelf: 'flex-start' }} onClick={() => setManual(true)}>Or type the numbers (from a label)</button>}
+      footer={(q) => (
+        <button className="link" style={{ alignSelf: 'flex-start' }} onClick={() => { if (q) recordMiss(q, 'typed'); setManual(q) }}>
+          Or type the numbers (from a label)
+        </button>
+      )}
     />
   )
 }

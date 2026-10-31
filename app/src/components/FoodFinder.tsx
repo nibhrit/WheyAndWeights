@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { addQuickAdd, useStore } from '../data/store'
 import type { FoodRef, Nutrients } from '../data/types'
 import type { Food, Portion } from '../data/foods/schema'
 import { localDate } from '../lib/dates'
-import { buildIndex, foodUsage, searchRanked, topFoods } from '../lib/foodSearch'
+import { buildIndex, foodUsage, searchAll, topFoods, type Hit } from '../lib/foodSearch'
+import { usePackaged } from '../lib/usePackaged'
+import { recordMiss } from '../lib/misses'
 import { isMyFood, myFoodsFrom } from '../lib/myFoods'
 import {
   GRAM_STEP, MAX_GRAMS, MAX_QTY, QTY_STEP, defaultPortion, fmtQty, foodRef, nutrientsFor, portionGrams, portionText,
@@ -35,7 +37,7 @@ type FinderProps = {
   onCancel?: () => void       // shows Cancel on the search itself (when linking)
   note?: React.ReactNode      // shown above the numbers once a food is picked, e.g. what it replaces
   saveQuick?: boolean         // offer "Save as one-tap food"
-  footer?: React.ReactNode
+  footer?: React.ReactNode | ((query: string) => React.ReactNode)   // gets the search text (e.g. to type it instead)
 }
 
 export default function FoodFinder({ initialQuery = '', submitLabel, onDone, onCancel, note, saveQuick, footer }: FinderProps) {
@@ -50,13 +52,50 @@ export default function FoodFinder({ initialQuery = '', submitLabel, onDone, onC
   const [pack, setPack] = useState<PackState | null>(null)       // a barcode being looked up, or why it failed
   const [issues, setIssues] = useState<Issue[]>([])              // what's wrong with the picked product's record
   const [label, setLabel] = useState<(LabelStart & { intro?: string }) | null>(null)    // the label form, prefilled
-  const [packed, setPacked] = useState<{ busy: boolean; error: string | null; items: Packaged[] | null }>({ busy: false, error: null, items: null })
+  const [live, setLive] = useState<{ q: string; items: Packaged[] } | null>(null)   // Open Food Facts results for a query
   // Your own foods (AI estimates, scanned packs, pack labels) are searchable alongside the list
   const mine = useMemo(() => myFoodsFrom([...store.protein, ...(store.ownFoods ?? [])]), [store.protein, store.ownFoods])
   const mineIndex = useMemo(() => buildIndex(mine), [mine])
+  const packaged = usePackaged()
+
+  // ---------- One search for everything (TF-57) ----------
+  const usage = foodUsage(store.protein, localDate())
+  const q = query.trim()
+  const hits: Hit[] = foods && q
+    ? searchAll(query, { mine: mineIndex, list: foods.index, pack: packaged?.index, brandOf: packaged?.brandOf }, usage, 10)
+    : []
+  const weak = !hits.length || hits[0].score >= WEAK
+  const byId = (id: string) => foods?.foodById(id) ?? mine.find((f) => f.id === id) ?? packaged?.packagedById(id)
+  const recent = !q && focused && foods ? topFoods(usage).map(byId).filter((f): f is Food => !!f) : []
+  const offerAi = !!foods && q.length >= MIN_AI_QUERY && weak
+
+  // Nothing good locally: after a pause, look it up on Open Food Facts too (online only; their search allows 10 a minute)
+  const liveFor = live?.q === q ? live : null
+  const localIds = new Set(hits.map((h) => h.food.id))
+  const liveItems = (liveFor?.items ?? []).filter((p) => !localIds.has(p.food.id)).slice(0, 5)
+  useEffect(() => {
+    if (q.length < 4 || !weak || !navigator.onLine || !foods) return
+    let cancelled = false
+    const t = setTimeout(async () => {
+      const r = await searchPackaged(q)
+      if (!cancelled && r.ok) setLive({ q, items: r.products })
+    }, 900)
+    return () => { cancelled = true; clearTimeout(t) }
+  }, [q, weak, foods])
+
+  // A search that finds nothing good, then is cleared or left, is a "miss" (TF-60), as is falling back to AI or typing
+  const pending = useRef<{ q: string; at: number } | null>(null)
+  useEffect(() => { pending.current = q.length >= 3 && weak && foods ? { q, at: Date.now() } : null }, [q, weak, foods])
+  useEffect(() => () => flushMiss(), [])
+  function flushMiss() {
+    const p = pending.current
+    pending.current = null
+    if (p && Date.now() - p.at > 2000) recordMiss(p.q, 'none')
+  }
 
   const done = (n: Nutrients, ref: FoodRef, name: string) => {
-    onDone(n, ref, name); setPicked(null); setAi(null); setLabel(null); setPack(null); setQuery(''); setPacked({ busy: false, error: null, items: null })
+    pending.current = null
+    onDone(n, ref, name); setPicked(null); setAi(null); setLabel(null); setPack(null); setQuery(''); setLive(null)
   }
 
   // ---------- Packaged foods ----------
@@ -69,6 +108,7 @@ export default function FoodFinder({ initialQuery = '', submitLabel, onDone, onC
     pick(p.food)
   }
   async function openBarcode(code: string, fallback?: Packaged) {
+    pending.current = null
     // Logged this pack before? Your saved numbers (including label corrections) win over the shared record
     const yours = mine.find((f) => f.id === `off:${code}`)
     if (yours) { setIssues([]); return pick(yours) }
@@ -78,11 +118,7 @@ export default function FoodFinder({ initialQuery = '', submitLabel, onDone, onC
     if (fallback && r.reason !== 'not_found') return openProduct(fallback)   // search result, when the lookup can't be done
     setPack({ code, state: r.reason })
   }
-  async function searchPacks() {
-    setPacked({ busy: true, error: null, items: null })
-    const r = await searchPackaged(q)
-    setPacked(r.ok ? { busy: false, error: null, items: r.products } : { busy: false, error: r.message, items: null })
-  }
+
 
   if (scanning) return <Scanner onCode={(code) => { setScanning(false); openBarcode(code) }} onClose={() => setScanning(false)} />
   if (label) {
@@ -114,19 +150,9 @@ export default function FoodFinder({ initialQuery = '', submitLabel, onDone, onC
     )
   }
 
-  const usage = foodUsage(store.protein, localDate())
-  const q = query.trim()
-  const ranked = foods && q
-    ? [...searchRanked(mineIndex, query, usage), ...searchRanked(foods.index, query, usage)].sort((a, b) => a.score - b.score).slice(0, 8)
-    : []
-  const byId = (id: string) => foods?.foodById(id) ?? mine.find((f) => f.id === id)
-  const results = !foods ? [] : q
-    ? ranked.map((h) => h.food)
-    : focused ? topFoods(usage).map(byId).filter((f): f is Food => !!f) : []
-  const offerAi = !!foods && q.length >= MIN_AI_QUERY && (!ranked.length || ranked[0].score >= WEAK)
-
   // A recent food opens with the portion used last time
   function pick(food: Food) {
+    pending.current = null
     const last = [...store.protein].reverse().find((e) => e.food_id === food.id)
     const portion = last?.portion_label ? food.portions.find((p) => p.label === last.portion_label) ?? null
       : last && !isMyFood(food) ? null : defaultPortion(food)   // your own foods open on the portion you used
@@ -135,6 +161,8 @@ export default function FoodFinder({ initialQuery = '', submitLabel, onDone, onC
   }
 
   async function askAi(text = q) {
+    pending.current = null
+    recordMiss(text, 'ai')
     setAiState({ busy: true, error: null })
     const r = await estimateFood(text)
     if (r.ok) { setAi({ estimate: r.estimate, cacheId: r.cacheId }); setAiState({ busy: false, error: null }) }
@@ -147,7 +175,7 @@ export default function FoodFinder({ initialQuery = '', submitLabel, onDone, onC
         <input
           className="search" type="search" placeholder="Search food: roti, dal, paneer…" aria-label="Search food"
           autoComplete="off" enterKeyHint="search" value={query}
-          onChange={(e) => { setQuery(e.target.value); setAiState({ busy: false, error: null }); setPacked({ busy: false, error: null, items: null }) }}
+          onChange={(e) => { if (!e.target.value.trim()) flushMiss(); setQuery(e.target.value); setAiState({ busy: false, error: null }) }}
           onFocus={() => setFocused(true)} onBlur={() => setTimeout(() => setFocused(false), 200)}
         />
         <button type="button" className="scan-btn" aria-label="Scan a barcode" onClick={() => setScanning(true)}>
@@ -157,37 +185,34 @@ export default function FoodFinder({ initialQuery = '', submitLabel, onDone, onC
           <span>Scan</span>
         </button>
       </div>
-      {!q && focused && results.length > 0 && <span className="cap">Recent</span>}
-      {results.length > 0 && (
+      {recent.length > 0 && (
+        <>
+          <span className="cap">Recent</span>
+          <div className="results">{recent.map((f) => <Result key={f.id} food={f} onPick={pick} />)}</div>
+        </>
+      )}
+      {hits.length > 0 && (
         <div className="results">
-          {results.map((f) => <Result key={f.id} food={f} onPick={pick} />)}
+          {hits.map((h) => <Result key={h.food.id} food={h.food} brand={h.source === 'pack' ? packaged?.brandOf(h.food.id) ?? null : undefined} onPick={pick} />)}
         </div>
       )}
-      {q && foods && !results.length && <p className="cap empty">No match for “{q}” in the food list.</p>}
+      {liveItems.length > 0 && (
+        <>
+          <span className="cap">More packaged foods · Open Food Facts</span>
+          <div className="results">
+            {liveItems.map((p) => <PackResult key={p.code} p={p} onPick={() => openBarcode(p.code, p)} />)}
+          </div>
+        </>
+      )}
+      {q && foods && !hits.length && !liveItems.length && <p className="cap empty">No match for “{q}”.</p>}
       {offerAi && (
         <button type="button" className="btn ghost" disabled={aiState.busy} onClick={() => askAi()}>
           {aiState.busy ? 'Estimating…' : `Estimate “${q.length > 28 ? `${q.slice(0, 27)}…` : q}” with AI`}
         </button>
       )}
       {aiState.error && <p className="err" role="alert">{aiState.error}</p>}
-      {q.length >= MIN_AI_QUERY && !packed.items && (
-        <button type="button" className="btn ghost" disabled={packed.busy} onClick={searchPacks}>
-          {packed.busy ? 'Searching packaged foods…' : 'Search packaged foods'}
-        </button>
-      )}
-      {packed.error && <p className="err" role="alert">{packed.error}</p>}
-      {packed.items && (
-        packed.items.length ? (
-          <>
-            <span className="cap">Packaged foods · Open Food Facts</span>
-            <div className="results">
-              {packed.items.map((p) => <PackResult key={p.code} p={p} onPick={() => openBarcode(p.code, p)} />)}
-            </div>
-          </>
-        ) : <p className="cap empty">No packaged food with nutrition found for “{q}”. Try the brand name, or scan the barcode.</p>
-      )}
       {onCancel && <button type="button" className="btn ghost" onClick={onCancel}>Cancel</button>}
-      {footer}
+      {typeof footer === 'function' ? footer(q) : footer}
     </div>
   )
 }
@@ -260,14 +285,15 @@ function PackResult({ p, onPick }: { p: Packaged; onPick: () => void }) {
   )
 }
 
-function Result({ food, onPick }: { food: Food; onPick: (f: Food) => void }) {
+// brand: set for a packaged product from the list (shows "Pack · Brand")
+function Result({ food, brand, onPick }: { food: Food; brand?: string | null; onPick: (f: Food) => void }) {
   const portion = defaultPortion(food)
   const n = nutrientsFor(food, portionGrams(portion, portion ? 1 : 100))
   const about = food.confidence === 'estimate'
   return (
     <button className="result" onClick={() => onPick(food)}>
       <span className="row-main">
-        <span>{food.name} {about && <span className="about">about</span>}</span>
+        <span>{food.name} {about && <span className="about">about</span>}{brand !== undefined && <span className="pack-tag">Pack{brand ? ` · ${brand}` : ''}</span>}</span>
         <span className="cap" style={{ textAlign: 'left' }}>{portion?.label ?? '100 g'}{MINE_NOTE[food.source.name] ?? ''}</span>
       </span>
       <span className="cap">{n.grams} g · {n.kcal} kcal</span>

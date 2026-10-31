@@ -164,3 +164,10 @@ try { await db.exec(`set role service_role`); await db.query(`insert into remind
 const rlA=(await as(A,`select count(*)::int c from reminder_log`)).rows[0].c; rlA===0?ok('reminders: users cannot read the log'):bad('user read log')
 try { await as(A, `insert into reminder_log(user_id,kind,local_date) values ('${A}','protein','2026-11-01')`); bad('user wrote log') } catch { ok('reminders: users cannot write the log') }
 await db.exec('set role anon'); try { await db.query('select * from push_subscriptions'); bad('anon read devices') } catch { ok('push: anon cannot read devices') } finally { await db.exec('reset role') }
+// Missed searches (TF-60): private, one per query per day, normalised
+await as(A, `insert into food_search_misses(query,local_date,outcome) values ('benne dosa','2026-11-01','ai')`)
+await as(A, `insert into food_search_misses(query,local_date,outcome) values ('benne dosa','2026-11-01','typed') on conflict do nothing`)
+const mA=(await as(A,`select outcome from food_search_misses`)).rows; (mA.length===1&&mA[0].outcome==='ai')?ok('misses: one per query per day'):bad(JSON.stringify(mA))
+const mB=(await as(B,`select count(*)::int c from food_search_misses`)).rows[0].c; mB===0?ok('misses: B sees 0 of A\'s searches'):bad('B sees A misses')
+try { await as(A, `insert into food_search_misses(query,local_date,outcome) values ('Benne Dosa ','2026-11-02','ai')`); bad('unnormalised query') } catch { ok('misses: query stored trimmed and lower-case') }
+try { await as(B, `insert into food_search_misses(user_id,query,local_date,outcome) values ('${A}','xyz','2026-11-01','ai')`); bad('B wrote as A') } catch { ok('misses: B cannot write as A') }

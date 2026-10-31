@@ -31,6 +31,8 @@ export default defineConfig({
       workbox: {
         // Cache the app itself so it opens with no signal; data calls always go to the network
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+        // The packaged-foods list (TF-57) is one ~3 MB chunk; cache it so search works offline
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         navigateFallback: '/WheyAndWeights/index.html',
         // Phone reminders (TF-20): show pushes, open the right tab on tap
         importScripts: ['push-handler.js'],

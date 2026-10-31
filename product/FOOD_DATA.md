@@ -1,6 +1,6 @@
 # Food data: sources and method
 
-Whey & Weights ships with a built-in list of about 330 foods, so you can log meals by name and portion. You don't have to type grams of protein. This page covers where the numbers come from, how dish values were worked out, and how much to trust each one.
+Whey & Weights ships with a built-in list of about 650 foods, so you can log meals by name and portion. You don't have to type grams of protein. This page covers where the numbers come from, how dish values were worked out, and how much to trust each one.
 
 - Data file: `app/src/data/foods/foods.json`, which follows the contract in `app/src/data/foods/schema.ts`
 - Generator: `app/src/data/foods/build-foods.mjs`, which holds every ingredient value and recipe and writes `foods.json`
@@ -59,6 +59,10 @@ Rules followed:
 - **Soya chaap.** Commercial chaap sticks are soy protein plus wheat flour. They are modelled as 1:1 defatted soy flour and maida, boiled to about twice the dry weight. That gives about 173 kcal and 15 g protein per 100 g, which matches common labels (12–20 g protein). Because the ratio is assumed, all chaap foods are `estimate`. Restaurant variants add their own marinade fat, listed in `notes`. For example, malai chaap uses about 50 g cream, cashew, cheese and butter per 6-stick plate.
 - **Proxies.** Rohu and katla use USDA carp. Chana dal and desi chana use USDA chickpeas, which have slightly more fat. Methi leaves use spinach. Poha uses raw white rice. Soya chunks use defatted soy flour. Khoa uses whole-milk powder adjusted to about 15% moisture.
 - **Indian milks** are blends of USDA whole milk, skim milk and cream, mixed to FSSAI fat levels: full cream 6%, toned 3%, double toned 1.5%.
+- **Plates and combos** (dal chawal, rajma chawal, dal baati, aloo tikki chaat, samosa chaat, keema pav, falafel wrap) are built from the dishes already in the list, scaled to the grams on the plate, so a plate always agrees with its parts.
+- **More proxies (2026.11).** Moong sprouts for matki (moth) sprouts, which USDA does not list. Capsicum for the large frying chillies in mirchi bajji, mirchi vada and mirchi ka salan. Lauki for ash gourd and chow chow. USDA yam (Dioscorea) for suran. Coriander for mint in green chutney. Ripe mango for raw mango in pickle. USDA bulgur for the wheat in haleem. USDA whole-milk Greek yogurt for hung curd (shrikhand).
+- **Packaged generics** (glucose, Marie, cream and digestive biscuits, rusk, bhujia, mixture, chakli) are typical recipes baked or fried to the moisture of the product. They land within a few per cent of common labels, but brands differ, so they are `estimate` and the notes say to check the pack. A scanned pack (section 8) is always better.
+- **Homemade pizza.** A 10-inch pizza made from 150 g flour (atta, or bread flour for "maida"), 100 g tomato sauce, 100 g mozzarella, toppings and 2 tsp olive oil. It bakes to about 480 g (veg) or 500 g (chicken) and is cut into 6 slices. Portions are 1 slice, 2 slices and the whole pizza.
 
 Cross-check against other tables (kcal per 100 g, Whey & Weights / other):
 
@@ -83,9 +87,9 @@ Cross-check against other tables (kcal per 100 g, Whey & Weights / other):
 
 | Level | Meaning | Count |
 |---|---|---|
-| `measured` | Taken directly from a lab-analysed USDA table entry, or a documented equivalent food (e.g. soya chunks = defatted soy flour) | 115 |
-| `calculated` | A standard recipe computed from measured ingredients, or a documented blend (Indian milks) | 110 |
-| `estimate` | A typical value with no direct lab source. This covers all restaurant dishes; deep-fried and syrup-soaked foods; paneer, makhana, jaggery and whey powder; and any recipe where estimated ingredients supply more than 20% of the energy (so all paneer and soya chaap dishes). The app shows these as "about" | 105 |
+| `measured` | Taken directly from a lab-analysed USDA table entry, or a documented equivalent food (e.g. soya chunks = defatted soy flour) | 131 |
+| `calculated` | A standard recipe computed from measured ingredients, or a documented blend (Indian milks) | 211 |
+| `estimate` | A typical value with no direct lab source. This covers all restaurant dishes; deep-fried and syrup-soaked foods; paneer, makhana, jaggery and whey powder; and any recipe where estimated ingredients supply more than 20% of the energy (so all paneer and soya chaap dishes); packaged generics such as biscuits and namkeen. The app shows these as "about" | 304 |
 
 ## 5. Household measures
 
@@ -112,6 +116,18 @@ Cross-check against other tables (kcal per 100 g, Whey & Weights / other):
 | 1 can soft drink | 330 ml (about 340 g) | |
 | 1 slice bread | 25 g (white), 28 g (brown) | |
 | 1 handful nuts / chana | 25–30 g | |
+| 1 benne dosa | 125 g (with ~15 g butter) | Davangere style |
+| 1 neer dosa / 1 appam | 45 g / 50 g | |
+| 1 pav | 35 g | a plate of pav bhaji or misal has 2 |
+| 1 slice homemade pizza | about 80 g (1/6 of a 10-inch pizza) | whole pizza 470–500 g |
+| 1 slice chain pizza | 75–125 g | depends on crust and cheese |
+| 6 momos | 150 g | |
+| 1 plate chaat | 120 g (sev puri) to 330 g (samosa chaat) | |
+| 1 roll / frankie | 175–210 g | |
+| 1 fast-food burger | 170–200 g | |
+| 6-inch sub | 170–210 g | footlong is double |
+| 1 glass shake / cold coffee | 300 g | |
+| 4 glucose / Marie biscuits | 25–28 g | |
 
 ## 6. Known limitations
 
@@ -120,7 +136,7 @@ Cross-check against other tables (kcal per 100 g, Whey & Weights / other):
 - **Added sugar in sweetened products** is derived from total sugars and is approximate (±2 g per 100 g). Sweets and restaurant desserts can vary by ±30%.
 - **Home oil use** is the biggest variable for calories in home dishes. Protein is much less affected.
 - **USDA ingredients are US samples.** Indian varieties (desi chana, local rice, buffalo-milk curd) differ by a few per cent.
-- **Not covered**: packaged and branded foods (phase 2), regional specialities outside the common North and South Indian set, alcohol, and micronutrients.
+- **Not covered**: branded foods (use barcode scan, section 8), ragi (finger millet) and ker sangri dishes (no USDA entry), North-East Indian and many coastal specialities, pork and beef dishes, alcohol, and micronutrients.
 
 ## 7. Adding or correcting a food
 
@@ -162,3 +178,15 @@ from [Open Food Facts](https://world.openfoodfacts.org) and never copied into `f
 - **Licence.** The database is under ODbL 1.0 (attribution plus share-alike *for the database*), individual product data under DbCL, and images under CC BY-SA. Showing looked-up values in the app is a "produced work" and needs attribution ("Data from Open Food Facts, ODbL"). Storing a copied *subset* as our own database would put that subset under ODbL, so keep OFF data separate from `foods.json`.
 - **Data quality.** OFF is crowd-sourced. Expect missing nutrients, per-serving values entered as per-100 g, kJ/kcal mix-ups, and stale recipes. Validate on import: the energy check above, macros of 100 g or less, and a sanity check on the serving size. Show those foods as `estimate` unless the values are confirmed against the label.
 - **Indian coverage** is patchy. Search by barcode and fall back to name. Let users correct a product from its label.
+
+## 9. Added in 2026.11 (TF-58)
+
+The list grew from 330 to 646 foods (basic 128 → 160, Indian home 123 → 238, restaurant 79 → 248), all from users' requests:
+
+- **Regional dishes.** South Indian (benne dosa, neer, set, ghee roast, Mysore masala, cheese and paneer dosa, appam, idiyappam, puttu, pongal, bisi bele bath, avial, kootu, thoran, more sambar and rasam, chutneys and podi), Kerala, Hyderabadi (haleem, bagara baingan, mirchi ka salan, double ka meetha), Bengali (shukto, macher jhol, luchi, cholar dal, aloo posto, kosha mangsho, mishti doi), Gujarati (khandvi, handvo, undhiyu, Gujarati kadhi and dal, dal dhokli, khakhra), Maharashtrian (Indori poha, thalipeeth, misal pav, sabudana khichdi, zunka, varan, amti, puran poli, modak), Punjabi (sarson ka saag, rice plates, mooli and pyaaz paratha, missi roti) and Rajasthani (dal baati, churma, gatte, pyaaz kachori, mirchi vada).
+- **Street food and snacks.** Chaat (sev puri, dahi puri, papdi chaat, aloo tikki chaat, samosa chaat, dahi bhalla, raj kachori, ragda pattice), rolls and frankies, more momos, samosa and pakora variants, puffs, cutlets, dabeli, namkeen and generic biscuits.
+- **Restaurant and delivery orders.** More curries, tandoor items, naans and kulchas, biryani styles, Indo-Chinese, soups, and chain-style burgers, fried chicken, wraps, pizza, pasta, subs, sandwiches, coffee and shakes. Names are generic, never brands.
+- **Homemade pizza** (veg and chicken on atta or maida, paneer, and bread pizza), per slice and per whole pizza.
+- **New USDA ingredients** (FDC id): tapioca pearls 169717, poppy seed 171330, mustard greens 169256, bitter gourd 168393, drumstick pods 170483, green plantain 168215, cowpeas 173758, radish 169276, yam 170071, taro 169308, coconut water 170174, vanilla ice cream 167575, potato chips 169677, ramen noodles dry 171177, cocoa powder 169593, flour tortilla 175037, and fast-food fried chicken breast 170756, drumstick 170757 and thigh 170359.
+- A few aliases moved from a general dish to its new specific entry (for example "luchi", "cholar dal", "macher jhol", "mysore masala dosa", "chicken burger"). No ids changed.
+
