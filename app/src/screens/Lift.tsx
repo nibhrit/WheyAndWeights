@@ -71,7 +71,7 @@ export default function Lift({ target }: { target?: LiftTarget | null }) {
             <span className="sec">Today’s split</span>
             <button className="link" onClick={() => setPlanning(true)}>Plan week</button>
           </div>
-          <div className="chips scroll" role="group" aria-label="Today’s split">
+          <div className="chips" role="group" aria-label="Today’s split">
             {groups.map((g) => (
               <button key={g} className="chip" aria-pressed={split.includes(g)} onClick={() => toggleSplit(g)}>{g}</button>
             ))}

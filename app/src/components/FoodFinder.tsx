@@ -167,10 +167,9 @@ export function PortionPicker({ food, portion: initialPortion, qty: initialQty, 
 
   function choose(p: Portion | null) {
     if (p === portion) return
-    // Keep the amount roughly the same when switching between a household unit and grams
-    const g = valid ? portionGrams(portion, q) : 0
+    // A new portion starts at 1 (grams at 100); the user adjusts from there
     setPortion(p)
-    setQty(fmtQty(p ? Math.max(QTY_STEP, Math.round((g / p.grams) / QTY_STEP) * QTY_STEP || 1) : Math.max(1, Math.round(g)) || 100))
+    setQty(fmtQty(p ? 1 : 100))
   }
   const bump = (d: number) => {
     const next = Math.round(((valid ? q : 0) + d * step) / step) * step

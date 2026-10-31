@@ -46,6 +46,15 @@ test('ranking: exact > prefix > contains', () => {
   assert.equal(ids('ryani')[0], 'chicken-biryani-restaurant')
 })
 
+test('cooked before raw, even when the raw form has the exact alias', () => {
+  const full: FoodDataset = JSON.parse(fs.readFileSync(new URL('../src/data/foods/foods.json', import.meta.url), 'utf8'))
+  const ix = buildIndex(full.foods)
+  const first = (q: string) => searchFoods(ix, q)[0]?.id
+  assert.equal(first('toor dal'), 'toor-dal-cooked')
+  assert.equal(first('toor dal raw'), 'toor-dal-raw')
+  assert.match(first('rice') ?? '', /cooked/)
+})
+
 test('typos', () => {
   assert.equal(ids('chiken')[0], 'chicken-breast-cooked')
   assert.equal(ids('biryni')[0], 'chicken-biryani-restaurant')

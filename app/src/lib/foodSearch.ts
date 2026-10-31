@@ -100,12 +100,12 @@ export function searchRanked(index: FoodIndex, query: string, usage: Record<stri
         if (r !== null) score = Math.min(score, r + (t.alias ? 0.5 : 0))
       }
     }
-    if (score < Infinity) hits.push({ food, score })
+    // Ingredient forms count as a weaker match, even on an exact alias ("toor dal" → cooked first, "toor dal raw" → raw)
+    if (score < Infinity) hits.push({ food, score: score + ingredientOnly(food) })
   })
   return hits
     .sort((a, b) => a.score - b.score
       || (usage[b.food.id] ?? 0) - (usage[a.food.id] ?? 0)
-      || ingredientOnly(a.food) - ingredientOnly(b.food)
       || a.food.name.length - b.food.name.length
       || a.food.name.localeCompare(b.food.name))
     .slice(0, limit)

@@ -23,6 +23,7 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 html, body, #root { height: 100%; }
+html, body { overscroll-behavior-y: none; }
 body {
   margin: 0;
   background: var(--chalk);
@@ -44,12 +45,14 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   display: flex; flex-direction: column;
   padding-top: env(safe-area-inset-top, 0px);
 }
-main { flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+main { flex: 1; padding: 16px 16px calc(80px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; }
 .hdr { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .hdr h1 { margin: 0; font-size: 22px; font-weight: 700; font-stretch: 125%; }
 
+/* Fixed to the screen, not the content, so it sits in the same place on every page */
 nav.tabs {
-  position: sticky; bottom: 0; background: var(--card); border-top: 1px solid var(--line);
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 440px; z-index: 5;
+  background: var(--card); border-top: 1px solid var(--line);
   display: grid; grid-template-columns: repeat(4, 1fr);
   padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
 }
