@@ -1,134 +1,118 @@
 import { useState } from 'react'
-import { EVENING_HOUR, groupsOn, habitsOn, lastSession, todaySession, useStore } from '../data/store'
-import { GROUPS, type Exercise } from '../data/types'
-import { addDays, fmtDate, fmtDay, localDate } from '../lib/dates'
+import { EVENING_HOUR, MIN_FOODS, cardioOn, groupsOn, habitsOn, proteinOn, useStore } from '../data/store'
+import { GROUPS, cardioName, effortName } from '../data/types'
+import { addDays, localDate } from '../lib/dates'
 import { fmtSets } from '../lib/format'
+import { LOOK_BACK, dayLabel, useDay } from '../lib/dayContext'
 import Header from '../components/Header'
 import QuickAdds from '../components/QuickAdds'
 import HabitsCard from '../components/HabitsCard'
 import { HabitsTile, KcalTile, ProteinTile } from '../components/DayTiles'
-import PastDay from './PastDay'
 import GoodDayLine from '../components/GoodDayLine'
 
 type Props = {
   onOpenExercise: (id: string, repeat: boolean) => void
   onGoToLift: () => void
   onGoToProtein: () => void
+  onGoToCardio: () => void
 }
 
-const LOOK_BACK = 7     // past days you can open from the date
+const fullDate = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
 
-const dayLabel = (d: string, today: string) =>
-  d === today ? 'Today' : d === addDays(today, -1) ? 'Yesterday' : `${fmtDay(d)} ${fmtDate(d)}`
-
-export default function Today({ onOpenExercise, onGoToLift, onGoToProtein }: Props) {
+// Only the chosen day: today by default, or a past day picked from the date (the whole app then logs to it)
+export default function Today({ onOpenExercise, onGoToLift, onGoToProtein, onGoToCardio }: Props) {
   const store = useStore()
-  const today = localDate()
-  const groups = groupsOn(store, today)
-  const habits = habitsOn(store, today)
-  const habitsDone = [habits.sugar, habits.junk_food].filter(Boolean).length
-  const [showHabits, setShowHabits] = useState(false)
-  const [day, setDay] = useState<string | null>(null)   // null = today, even after midnight
+  const { day, setDay, isToday } = useDay()
   const [picking, setPicking] = useState(false)
-  const viewing = day && day < today && day >= addDays(today, -LOOK_BACK) ? day : today
-  const habitsVisible = showHabits || habitsDone > 0 || new Date().getHours() >= EVENING_HOUR
+  const [showHabits, setShowHabits] = useState(false)
+  const groups = groupsOn(store, day)
+  const habits = habitsOn(store, day)
+  const evening = new Date().getHours() >= EVENING_HOUR
+  const habitsVisible = !isToday || showHabits || !!(habits.sugar || habits.junk_food) || evening
+  const foods = proteinOn(store, day).length
 
-  // Exercises for today's split (or everything if no split yet) that have history, most recent first
-  const recent = (e: Exercise) => lastSession(store, e.id)?.local_date ?? ''
-  const pool = store.exercises
-    .filter((e) => !groups.length || groups.includes(e.muscle_group))
-    .filter((e) => lastSession(store, e.id) || todaySession(store, e.id))
-    .sort((a, b) => recent(b).localeCompare(recent(a)))
-  const featured = pool.find((e) => !todaySession(store, e.id))
-  const rest = pool.filter((e) => e !== featured).slice(0, 3)
+  const lifts = store.sessions
+    .filter((x) => x.local_date === day)
+    .sort((a, b) => a.performed_at.localeCompare(b.performed_at))
+  const cardio = cardioOn(store, day)
+  const nameOf = (id: string) => store.exercises.find((e) => e.id === id)?.name ?? 'Exercise'
 
   return (
     <>
       <Header
-        title={viewing === today ? 'Today' : viewing === addDays(today, -1) ? 'Yesterday' : new Date(`${viewing}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'long' })}
+        title={isToday ? 'Today' : day === addDays(localDate(), -1) ? 'Yesterday' : new Date(`${day}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'long' })}
         aside={
           <button className="date-btn" aria-expanded={picking} onClick={() => setPicking(!picking)}>
-            {new Date(`${viewing}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} <span aria-hidden="true">▾</span>
+            {fullDate(day)} <span aria-hidden="true">▾</span>
           </button>
         }
       />
-      {picking && (
-        <div className="chips" role="group" aria-label="Pick a day">
-          {Array.from({ length: LOOK_BACK + 1 }, (_, i) => addDays(today, -i)).map((d) => (
-            <button key={d} className="chip" aria-pressed={d === viewing} onClick={() => { setDay(d === today ? null : d); setPicking(false) }}>{dayLabel(d, today)}</button>
-          ))}
+      {picking && <DayPicker current={day} onPick={(d) => { setDay(d); setPicking(false) }} />}
+
+      <div className="tiles food">
+        <ProteinTile date={day} onOpen={onGoToProtein} />
+        <KcalTile date={day} onOpen={onGoToProtein} />
+        <HabitsTile date={day} onOpen={() => setShowHabits(true)} />
+      </div>
+      <GoodDayLine date={day} />
+
+      {isToday && evening && foods < MIN_FOODS && (
+        <div className="card nudge-card">
+          <span>{foods === 0 ? 'No food logged today yet.' : 'Only 1 food logged today.'} Add the rest so your calories and protein are right.</span>
+          <button className="btn ghost small" onClick={onGoToProtein}>Log food</button>
         </div>
       )}
-
-      {viewing !== today ? (
-        <>
-          <div className="past-note">
-            <span className="cap">Past day, view only</span>
-            <button className="link" onClick={() => setDay(null)}>Back to today</button>
-          </div>
-          <PastDay date={viewing} />
-        </>
-      ) : (<>
-      <div className="tiles food">
-        <ProteinTile date={today} onOpen={onGoToProtein} />
-        <KcalTile date={today} onOpen={onGoToProtein} />
-        <HabitsTile date={today} onOpen={() => setShowHabits(true)} />
-      </div>
-      <GoodDayLine date={today} />
 
       <QuickAdds />
 
       <div className="hdr sec-row">
-        <span className="sec">{groups.length ? GROUPS.filter((g) => groups.includes(g)).join(', ') : 'Last time'}</span>
-        <button className="link" onClick={onGoToLift}>{groups.length ? 'Change' : 'Pick split'}</button>
+        <span className="sec">{groups.length ? GROUPS.filter((g) => groups.includes(g)).join(', ') : 'Workout'}</span>
+        <button className="link" onClick={onGoToLift}>{lifts.length ? 'Add exercise' : groups.length ? 'Change' : 'Pick split'}</button>
       </div>
 
       {!store.loaded && !store.exercises.length ? (
         <p className="cap empty">Loading…</p>
-      ) : !pool.length ? (
-        <p className="cap empty">Your last weights show here once you’ve logged a session.</p>
+      ) : !lifts.length && !cardio.length ? (
+        <div className="card start-card">
+          <span className="cap">{isToday ? 'No workout logged yet today.' : 'No workout logged on this day.'}</span>
+          <button className="btn" onClick={onGoToLift}>{isToday ? 'Start workout' : 'Log a workout'}</button>
+        </div>
       ) : (
-        <>
-          {featured ? <Featured exercise={featured} onOpen={onOpenExercise} /> : <p className="cap empty">Today’s split is done. Nice work.</p>}
-          {rest.length > 0 && (
-            <div className="list">
-              {rest.map((e) => {
-                const done = todaySession(store, e.id)
-                const shown = done ?? lastSession(store, e.id)!
-                return (
-                  <button key={e.id} className="row" onClick={() => onOpenExercise(e.id, false)}>
-                    <span className="row-main">
-                      <span>{e.name}</span>
-                      <span className="cap">{done ? 'Done today' : fmtDate(shown.local_date)}</span>
-                    </span>
-                    <span className="num row-weights">{fmtSets(shown.sets)}</span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </>
+        <div className="list">
+          {lifts.map((x) => (
+            <button key={x.id} className="row" onClick={() => onOpenExercise(x.exercise_id, false)}>
+              <span className="row-main">
+                <span>{nameOf(x.exercise_id)}</span>
+                <span className="cap">{x.sets.length} {x.sets.length === 1 ? 'set' : 'sets'}</span>
+              </span>
+              <span className="num row-weights">{fmtSets(x.sets)}</span>
+            </button>
+          ))}
+          {cardio.map((c) => (
+            <button key={c.id} className="row" onClick={onGoToCardio}>
+              <span className="row-main">
+                <span>{cardioName(c.kind)}</span>
+                <span className="cap">{effortName(c.effort)}</span>
+              </span>
+              <span className="num row-weights">{c.minutes} min</span>
+            </button>
+          ))}
+        </div>
       )}
 
       {habitsVisible && <HabitsCard />}
-      </>)}
     </>
   )
 }
 
-function Featured({ exercise, onOpen }: { exercise: Exercise; onOpen: (id: string, repeat: boolean) => void }) {
-  const store = useStore()
-  const last = lastSession(store, exercise.id)!
+function DayPicker({ current, onPick }: { current: string; onPick: (d: string | null) => void }) {
+  const today = localDate()
+  const days = Array.from({ length: LOOK_BACK + 1 }, (_, i) => addDays(today, -i))
   return (
-    <div className="slab">
-      <button className="slab-open" onClick={() => onOpen(exercise.id, false)}>
-        <span className="cap">{exercise.name}</span>
-        <span className="num slab-weights">{fmtSets(last.sets)}</span>
-      </button>
-      <div className="slab-foot">
-        <span className="cap">Last on {fmtDate(last.local_date)}</span>
-        <button className="btn" onClick={() => onOpen(exercise.id, true)}>Repeat</button>
-      </div>
+    <div className="chips" role="group" aria-label="Pick a day">
+      {days.map((d, i) => (
+        <button key={d} className="chip" aria-pressed={d === current} onClick={() => onPick(i === 0 ? null : d)}>{dayLabel(d)}</button>
+      ))}
     </div>
   )
 }

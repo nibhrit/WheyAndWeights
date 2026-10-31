@@ -4,7 +4,7 @@ import {
 } from '../data/store'
 import Header from '../components/Header'
 import { NO_FOOD, type Nutrients, type ProteinEntry } from '../data/types'
-import { localDate } from '../lib/dates'
+import { useDay } from '../lib/dayContext'
 import { portionText } from '../lib/nutrition'
 import { macroLine, timeOf } from '../lib/format'
 import { isAiFood } from '../lib/aiEstimate'
@@ -20,7 +20,7 @@ import MacrosPanel from '../components/MacrosPanel'
 
 export default function Protein() {
   const store = useStore()
-  const today = localDate()
+  const { day: today, isToday, label } = useDay()
   const entries = [...proteinOn(store, today)].reverse()
   const [macros, setMacros] = useState(false)
   const openSettings = useContext(SettingsContext)
@@ -45,11 +45,11 @@ export default function Protein() {
       )}
       <AddFood />
 
-      <h2 className="sec">Today’s entries</h2>
+      <h2 className="sec">{isToday ? 'Today’s entries' : `Entries · ${label}`}</h2>
       {entries.length ? (
         <div className="list">{entries.map((e) => <EntryRow key={e.id} entry={e} />)}</div>
       ) : (
-        <p className="cap empty">Nothing logged yet today.</p>
+        <p className="cap empty">{isToday ? 'Nothing logged yet today.' : 'Nothing logged on this day.'}</p>
       )}
     </>
   )
@@ -58,7 +58,7 @@ export default function Protein() {
 // Calories eaten today, under the protein ring: a graphite meter when a target is set
 function KcalLine() {
   const store = useStore()
-  const today = localDate()
+  const { day: today } = useDay()
   const { total, missing } = kcalEatenOn(store, today)
   const goal = kcalGoalFor(store, today)
   return (
@@ -76,12 +76,13 @@ function KcalLine() {
 // ---------- Adding food: search the list (or ask AI), or type the numbers ----------
 
 function AddFood() {
+  const { day } = useDay()
   const [manual, setManual] = useState(false)
   if (manual) return <ManualForm initialLabel="" onSearch={() => setManual(false)} />
   return (
     <FoodFinder
       submitLabel="Log" saveQuick
-      onDone={(n, ref, name) => logFood({ ...n, ...ref, label: name })}
+      onDone={(n, ref, name) => logFood({ ...n, ...ref, label: name }, day)}
       footer={<button className="link" style={{ alignSelf: 'flex-start' }} onClick={() => setManual(true)}>Or type the numbers (from a label)</button>}
     />
   )
@@ -89,6 +90,7 @@ function AddFood() {
 
 // Something not in the list (e.g. from a pack label): type what you know. Protein or kcal required, the rest optional.
 function ManualForm({ initialLabel, onSearch }: { initialLabel: string; onSearch: () => void }) {
+  const { day } = useDay()
   const [label, setLabel] = useState(initialLabel.trim())
   const [vals, setVals] = useState<Vals>(toVals())
   const [error, setError] = useState<string | null>(null)
@@ -99,7 +101,7 @@ function ManualForm({ initialLabel, onSearch }: { initialLabel: string; onSearch
     const r = readVals(vals)
     if ('error' in r) return setError(r.error)
     if (r.n.grams > 300 && !force) return setConfirmBig(true)
-    logFood({ ...r.n, ...NO_FOOD, label: label || null })
+    logFood({ ...r.n, ...NO_FOOD, label: label || null }, day)
     setLabel(''); setVals(toVals()); setError(null); setConfirmBig(false)
   }
 

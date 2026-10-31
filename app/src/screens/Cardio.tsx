@@ -1,16 +1,17 @@
 import { useState } from 'react'
 import { bodyKg, cardioOn, deleteCardio, kcalOn, logCardio, updateCardio, useStore } from '../data/store'
 import { CARDIO_KINDS, EFFORTS, cardioName, effortName, type Cardio as CardioEntry, type CardioKind, type Effort } from '../data/types'
-import { fmtDate, localDate } from '../lib/dates'
+import { fmtDate } from '../lib/dates'
 import { cardioKcal } from '../lib/calories'
 import Header from '../components/Header'
+import { useDay } from '../lib/dayContext'
 
 const QUICK_MINUTES = [15, 20, 30, 45]
 const toInt = (v: string) => (/^\d+$/.test(v.trim()) ? Number(v.trim()) : NaN)
 
 export default function Cardio() {
   const store = useStore()
-  const today = localDate()
+  const { day: today, isToday, label } = useDay()
   const entries = [...cardioOn(store, today)].reverse()
   const kcal = kcalOn(store, today)
 
@@ -22,7 +23,7 @@ export default function Cardio() {
 
   return (
     <>
-      <Header title="Cardio" aside={kcal.cardio ? `about ${kcal.cardio} kcal today` : undefined} />
+      <Header title="Cardio" aside={kcal.cardio ? `about ${kcal.cardio} kcal${isToday ? ' today' : ''}` : undefined} />
       <LogCardio />
 
       {recent.length > 0 && (
@@ -30,7 +31,7 @@ export default function Cardio() {
           <h2 className="sec">Repeat</h2>
           <div className="chips scroll">
             {recent.map((c) => (
-              <button key={c.id} className="chip" onClick={() => logCardio(c.kind, c.minutes, c.effort)}>
+              <button key={c.id} className="chip" onClick={() => logCardio(c.kind, c.minutes, c.effort, today)}>
                 + {cardioName(c.kind)} <b>{c.minutes} min</b>
               </button>
             ))}
@@ -38,11 +39,11 @@ export default function Cardio() {
         </>
       )}
 
-      <h2 className="sec">Today</h2>
+      <h2 className="sec">{label}</h2>
       {entries.length ? (
         <div className="list">{entries.map((c) => <CardioRow key={c.id} entry={c} />)}</div>
       ) : (
-        <p className="cap empty">No cardio logged today.</p>
+        <p className="cap empty">{isToday ? 'No cardio logged today.' : 'No cardio logged on this day.'}</p>
       )}
     </>
   )
@@ -50,6 +51,7 @@ export default function Cardio() {
 
 function LogCardio() {
   const store = useStore()
+  const { day } = useDay()
   const [kind, setKind] = useState<CardioKind>('treadmill_run')
   const [minutes, setMinutes] = useState('')
   const [effort, setEffort] = useState<Effort>('moderate')
@@ -60,7 +62,7 @@ function LogCardio() {
   function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!Number.isInteger(m) || m < 1 || m > 600) return setError('Enter minutes between 1 and 600.')
-    logCardio(kind, m, effort)
+    logCardio(kind, m, effort, day)
     setMinutes('')
     setError(null)
   }

@@ -9,8 +9,9 @@
   --font: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
   color-scheme: light;
 }
+/* Dark: follows the phone unless Settings → Appearance picks Light or Dark (data-theme on <html>) */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --chalk: #121517; --card: #1C2023; --ink: #ECEFF0; --steel: #9AA3AB; --line: #2C3236;
     --slab: #2A3036; --slab-fg: #F4F6F7; --slab-dim: #A7B0B8;
     --lift: #6E8EFF; --lift-soft: #232B4D; --on-lift: #0B1230;
@@ -20,10 +21,20 @@
     color-scheme: dark;
   }
 }
+:root[data-theme='dark'] {
+  --chalk: #121517; --card: #1C2023; --ink: #ECEFF0; --steel: #9AA3AB; --line: #2C3236;
+  --slab: #2A3036; --slab-fg: #F4F6F7; --slab-dim: #A7B0B8;
+  --lift: #6E8EFF; --lift-soft: #232B4D; --on-lift: #0B1230;
+  --protein: #FFC21A; --protein-track: #3A321A; --protein-text: #FFD24D;
+  --habit: #5CCB8A; --habit-soft: #1E3327; --on-habit: #0B1F14;
+  --danger: #FF7A7A;
+  color-scheme: dark;
+}
 
 *, *::before, *::after { box-sizing: border-box; }
 html, body, #root { height: 100%; }
-html, body { overscroll-behavior-y: none; }
+/* The page itself never scrolls (iOS would bounce the tab bar with it); only <main> does */
+html, body { overflow: hidden; overscroll-behavior: none; }
 body {
   margin: 0;
   background: var(--chalk);
@@ -41,17 +52,21 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .card { background: var(--card); border-radius: 18px; padding: 14px; }
 
 .app {
-  max-width: 440px; margin: 0 auto; min-height: 100%;
+  max-width: 440px; margin: 0 auto; height: 100%; height: 100dvh;
   display: flex; flex-direction: column;
   padding-top: env(safe-area-inset-top, 0px);
 }
-main { flex: 1; padding: 16px 16px calc(80px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; }
+main {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  padding: 16px 16px 28px; display: flex; flex-direction: column; gap: 14px;
+}
+main > * { flex-shrink: 0; }
 .hdr { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .hdr h1 { margin: 0; font-size: 22px; font-weight: 700; font-stretch: 125%; }
 
-/* Fixed to the screen, not the content, so it sits in the same place on every page */
+/* Last item of the app column, below the scrolling <main>: always at the bottom, never over content */
 nav.tabs {
-  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 440px; z-index: 5;
+  flex-shrink: 0;
   background: var(--card); border-top: 1px solid var(--line);
   display: grid; grid-template-columns: repeat(4, 1fr);
   padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
@@ -99,7 +114,6 @@ nav.tabs svg { width: 22px; height: 22px; }
 .group { display: flex; flex-direction: column; gap: 10px; }
 .row.disclose { font-weight: 600; }
 .date-btn { color: var(--steel); font-size: 13px; padding: 10px 4px; min-height: 44px; }
-.past-note { display: flex; justify-content: space-between; align-items: center; background: var(--lift-soft); border-radius: 12px; padding: 0 12px; }
 .row.disclose .chev { color: var(--steel); font-size: 14px; }
 .list { display: flex; flex-direction: column; gap: 8px; }
 .row {
@@ -361,3 +375,12 @@ nav.tabs { grid-template-columns: repeat(5, 1fr); }
   .c-ring, .c-check { animation: none; stroke-dashoffset: 0; }
   .c-ray { display: none; }
 }
+
+/* Editing a past day (TF-50): a banner above every tab */
+.day-banner {
+  flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  margin: 8px 16px 0; padding: 0 12px; border-radius: 12px; background: var(--lift-soft); font-size: 14px;
+}
+.start-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.nudge-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }
+.nudge-card .btn { flex: 0 0 auto; }

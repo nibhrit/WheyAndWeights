@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { archiveExercise, deleteSession, lastSession, saveSession, sessionsFor, showToast, todaySession, updateExercise, useStore } from '../data/store'
 import TrendChart from '../components/TrendChart'
 import { GROUPS, STEP, type Exercise, type LiftSet, type MuscleGroup, type Session, type Unit } from '../data/types'
-import { fmtDate, localDate } from '../lib/dates'
+import { fmtDate } from '../lib/dates'
+import { useDay } from '../lib/dayContext'
 import { fmtSets, fmtWeight } from '../lib/format'
 
 type Props = { exercise: Exercise; repeat?: boolean; onBack: () => void }
@@ -16,8 +17,9 @@ const valid = (w: string) => { const n = parse(w); return Number.isFinite(n) && 
 
 export default function ExerciseDetail({ exercise, repeat = false, onBack }: Props) {
   const store = useStore()
-  const last = lastSession(store, exercise.id)
-  const today = todaySession(store, exercise.id)
+  const { day, isToday, label } = useDay()   // the day being logged; "last" is the session before it
+  const last = lastSession(store, exercise.id, day)
+  const today = todaySession(store, exercise.id, day)
 
   const savedDraft = toDraft(today?.sets ?? [])
   const savedKey = JSON.stringify(savedDraft)
@@ -59,7 +61,7 @@ export default function ExerciseDetail({ exercise, repeat = false, onBack }: Pro
     const bad = draft.findIndex((d) => !valid(d.weight))
     if (bad >= 0) return setError(`Set ${bad + 1}: enter a weight between 0 and 1000.`)
     if (!draft.length && today) { setTouched(false); return deleteSession(today.id) }
-    saveSession(exercise.id, draft.map((d, i) => ({ set_number: i + 1, weight: parse(d.weight), unit: d.unit })), today?.id)
+    saveSession(exercise.id, draft.map((d, i) => ({ set_number: i + 1, weight: parse(d.weight), unit: d.unit })), today?.id, day)
     setTouched(false)
     showToast(navigator.onLine ? (today ? 'Session updated' : 'Session saved') : 'Saved on this phone. It will sync when you have signal.')
   }
@@ -78,11 +80,11 @@ export default function ExerciseDetail({ exercise, repeat = false, onBack }: Pro
           <span className="num slab-weights">{fmtSets(last.sets)}</span>
         </div>
       ) : (
-        <div className="card cap">No earlier sessions yet. Today’s will show here next time.</div>
+        <div className="card cap">No earlier sessions yet. {isToday ? 'Today’s' : 'This one'} will show here next time.</div>
       )}
 
       <div className="hdr sec-row">
-        <span className="sec">Today{today && !dirty ? ' · saved' : ''}</span>
+        <span className="sec">{label}{today && !dirty ? ' · saved' : ''}</span>
         {last && !draft.length && (
           <button className="link" onClick={() => setDraft(toDraft(last.sets))}>Repeat last</button>
         )}
@@ -133,6 +135,7 @@ const toKg = (s: LiftSet) => (s.unit === 'lb' ? s.weight * LB : s.weight)
 const inUnit = (kg: number, unit: Unit) => (unit === 'lb' ? kg / LB : kg)
 
 function History({ exercise, sessions }: { exercise: Exercise; sessions: Session[] }) {
+  const { day } = useDay()
   if (!sessions.length) return null
   const all = sessions.flatMap((s) => s.sets.map((set) => ({ set, date: s.local_date })))
   const best = all.reduce((a, b) => (toKg(b.set) > toKg(a.set) ? b : a))
@@ -142,7 +145,7 @@ function History({ exercise, sessions }: { exercise: Exercise; sessions: Session
     label: fmtDate(s.local_date),
     value: inUnit(Math.max(...s.sets.map(toKg)), unit),
   }))
-  const past = sessions.filter((s) => s.local_date !== localDate()) // today's sets are in the editor above
+  const past = sessions.filter((s) => s.local_date !== day) // the day's sets are in the editor above
 
   return (
     <section className="group">

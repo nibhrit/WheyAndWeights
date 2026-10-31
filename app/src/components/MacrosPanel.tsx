@@ -1,7 +1,7 @@
 import { useContext } from 'react'
 import { bodyKg, fitnessGoal, kcalGoalFor, macrosOn, useStore, type MacroKey } from '../data/store'
 import { FITNESS_GOALS } from '../data/types'
-import { localDate } from '../lib/dates'
+import { useDay } from '../lib/dayContext'
 import { macroTargets, suggestedKcal, type Target } from '../lib/macros'
 import { SettingsContext } from '../lib/settingsContext'
 
@@ -15,7 +15,7 @@ type Row = { key: MacroKey; label: string; unit: string; target: Target | null }
 export default function MacrosPanel() {
   const store = useStore()
   const openSettings = useContext(SettingsContext)
-  const today = localDate()
+  const { day: today } = useDay()
   const goal = fitnessGoal(store)
   const kcal = kcalGoalFor(store, today)
   const { kg, estimated } = bodyKg(store)

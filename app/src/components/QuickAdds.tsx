@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { addStarterFoods, logQuickAdd, useStore } from '../data/store'
 import { STARTER_FOODS } from '../data/types'
+import { useDay } from '../lib/dayContext'
 
 // One-tap food logging (protein, and calories when the saved food has them).
 // On an empty list, offers a starter set of common foods.
 export default function QuickAdds({ offerStarters = false }: { offerStarters?: boolean }) {
   const { quickAdds, loaded } = useStore()
+  const { day } = useDay()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -29,7 +31,7 @@ export default function QuickAdds({ offerStarters = false }: { offerStarters?: b
   return (
     <div className="chips scroll" role="group" aria-label="Quick add food">
       {quickAdds.map((q) => (
-        <button key={q.id} className="chip food" onClick={() => logQuickAdd(q)}>
+        <button key={q.id} className="chip food" onClick={() => logQuickAdd(q, day)}>
           + {q.name} <b>{q.grams} g</b>
         </button>
       ))}

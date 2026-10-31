@@ -5,6 +5,7 @@ import { bodyKg, clearUser, fitnessGoal, goalFor, kcalGoalFor, setWeightUnit, us
 import { localDate } from '../lib/dates'
 import { CalorieGoalSetting, FitnessGoalSetting, GoalSetting, SavedFoods } from '../components/ProteinSettings'
 import { PROTEIN_PER_KG, suggestedKcal } from '../lib/macros'
+import { getTheme, setTheme, type Theme } from '../lib/theme'
 
 const FOOD_DATA_URL = 'https://github.com/nibhrit/WheyAndWeights/blob/main/product/FOOD_DATA.md'
 
@@ -48,6 +49,9 @@ export default function Settings({ session, onClose }: Props) {
         </div>
       </div>
 
+      <h2 className="sec">Appearance</h2>
+      <AppearanceSetting />
+
       <h2 className="sec">Account</h2>
       <div className="card form">
         <b style={{ overflowWrap: 'anywhere' }}>{session.user.email}</b>
@@ -57,5 +61,20 @@ export default function Settings({ session, onClose }: Props) {
         <button className="btn ghost" onClick={() => { clearUser(); supabase.auth.signOut() }}>Sign out</button>
       </div>
     </>
+  )
+}
+
+function AppearanceSetting() {
+  const [theme, setThemeState] = useState<Theme>(getTheme)
+  const pick = (t: Theme) => { setTheme(t); setThemeState(t) }
+  return (
+    <div className="card form">
+      <div className="seg" role="group" aria-label="Appearance">
+        {([['system', 'System'], ['light', 'Light'], ['dark', 'Dark']] as const).map(([t, label]) => (
+          <button key={t} className="pick" aria-pressed={theme === t} onClick={() => pick(t)}>{label}</button>
+        ))}
+      </div>
+      <span className="cap">System follows your phone’s light or dark mode. Saved on this device.</span>
+    </div>
   )
 }

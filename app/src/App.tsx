@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from './lib/supabase'
 import { useSession } from './lib/useSession'
 import SignIn from './screens/SignIn'
@@ -11,6 +11,7 @@ import Cardio from './screens/Cardio'
 import Toast from './components/Toast'
 import Celebration from './components/Celebration'
 import { SettingsContext } from './lib/settingsContext'
+import { DayContext, activeDay, dayLabel } from './lib/dayContext'
 import { clearUser, loadForUser, useStore } from './data/store'
 
 type Tab = 'today' | 'lift' | 'cardio' | 'protein' | 'week'
@@ -30,6 +31,23 @@ export default function App() {
   const [liftTarget, setLiftTarget] = useState<LiftTarget | null>(null)
   const userId = session?.user.id
   const { pending } = useStore()
+  const mainRef = useRef<HTMLElement>(null)
+  const [picked, setPicked] = useState<string | null>(null)   // a past day from Today's date; null = today
+  const day = activeDay(picked)
+
+  // Back to today after 5 minutes away, so nothing gets logged to an old day by accident
+  useEffect(() => {
+    let hiddenAt = 0
+    const onVisibility = () => {
+      if (document.hidden) hiddenAt = Date.now()
+      else if (hiddenAt && Date.now() - hiddenAt > 5 * 60_000) setPicked(null)
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [])
+
+  // Each tab opens at the top
+  useEffect(() => { mainRef.current?.scrollTo(0, 0) }, [tab, showSettings])
 
   // First sign-in on any device: make sure the user's settings row exists (no-op afterwards).
   useEffect(() => {
@@ -45,8 +63,15 @@ export default function App() {
 
   return (
     <SettingsContext.Provider value={() => setShowSettings(true)}>
+    <DayContext.Provider value={{ day, setDay: setPicked }}>
     <div className="app">
-      <main>
+      {picked && day === picked && !showSettings && tab !== 'week' && (
+        <div className="day-banner" role="status">
+          <span>Editing <b>{dayLabel(day)}</b></span>
+          <button className="link" onClick={() => setPicked(null)}>Back to today</button>
+        </div>
+      )}
+      <main ref={mainRef}>
         {pending > 0 && (
           <div className="sync" role="status">
             {pending === 1 ? '1 change' : `${pending} changes`} saved on this phone, waiting for signal
@@ -67,6 +92,7 @@ export default function App() {
             onOpenExercise={(id, repeat) => { setLiftTarget({ id, repeat, key: Date.now() }); setTab('lift') }}
             onGoToLift={() => { setLiftTarget(null); setTab('lift') }}
             onGoToProtein={() => setTab('protein')}
+            onGoToCardio={() => setTab('cardio')}
           />
         )}
       </main>
@@ -87,6 +113,7 @@ export default function App() {
       <Toast />
       {userId && <Celebration userId={userId} />}
     </div>
+    </DayContext.Provider>
     </SettingsContext.Provider>
   )
 }

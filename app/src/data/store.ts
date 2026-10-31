@@ -240,12 +240,22 @@ function upsertLocal(list: Session[], s: Session) {
   return newest([...list.filter((x) => x.id !== s.id), s])
 }
 
-export function saveSession(exercise_id: string, sets: LiftSet[], existingId?: string) {
+// A timestamp on a date: now for today; the current time of day for a past day (so entries keep a sensible order)
+export function stampOn(date: string): string {
+  const now = new Date()
+  if (date === localDate(now)) return now.toISOString()
+  const [y, m, d] = date.split('-').map(Number)
+  return new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds()).toISOString()
+}
+
+// date = the day being logged (today, or a past day from Today's date picker). Editing keeps the session's own day.
+export function saveSession(exercise_id: string, sets: LiftSet[], existingId?: string, date = localDate()) {
+  const existing = existingId ? state.sessions.find((x) => x.id === existingId) : undefined
   const session: Session = {
     id: existingId ?? crypto.randomUUID(),
     exercise_id,
-    performed_at: new Date().toISOString(),
-    local_date: localDate(),
+    performed_at: existing?.performed_at ?? stampOn(date),
+    local_date: existing?.local_date ?? date,
     sets: sets.map((s, i) => ({ ...s, set_number: i + 1 })),
   }
   set({ sessions: upsertLocal(state.sessions, session) })
@@ -264,10 +274,11 @@ export function deleteSession(id: string) {
 
 // Selectors
 export const sessionsFor = (s: State, exerciseId: string) => s.sessions.filter((x) => x.exercise_id === exerciseId)
-export const todaySession = (s: State, exerciseId: string) =>
-  s.sessions.find((x) => x.exercise_id === exerciseId && x.local_date === localDate())
-export const lastSession = (s: State, exerciseId: string) =>
-  s.sessions.find((x) => x.exercise_id === exerciseId && x.local_date < localDate())
+// The session on a date (default today), and the last one before it
+export const todaySession = (s: State, exerciseId: string, date = localDate()) =>
+  s.sessions.find((x) => x.exercise_id === exerciseId && x.local_date === date)
+export const lastSession = (s: State, exerciseId: string, date = localDate()) =>
+  s.sessions.find((x) => x.exercise_id === exerciseId && x.local_date < date)
 
 // A day's groups: the split picked for it plus the groups of anything logged that day
 export function groupsOn(s: State, date: string): MuscleGroup[] {
@@ -497,10 +508,10 @@ export function kcalGoalFor(s: State, date: string): number | null {
 
 export type NewEntry = Nutrients & FoodRef & { label: string | null; quick_add_id?: string | null }
 
-export function logFood(input: NewEntry) {
+export function logFood(input: NewEntry, date = localDate()) {
   const entry: ProteinEntry = {
     ...NO_FOOD, quick_add_id: null, ...input, label: input.label?.trim() || null,
-    id: crypto.randomUUID(), logged_at: new Date().toISOString(), local_date: localDate(),
+    id: crypto.randomUUID(), logged_at: stampOn(date), local_date: date,
   }
   set({ protein: upsertEntry(state.protein, entry) })
   enqueue({ kind: 'protein_save', entry })
@@ -515,12 +526,12 @@ export function logFood(input: NewEntry) {
 export const logProtein = (grams: number, label: string | null) =>
   logFood({ grams, ...NO_NUTRIENTS, ...NO_FOOD, label })
 
-export const logQuickAdd = (q: QuickAdd) =>
+export const logQuickAdd = (q: QuickAdd, date = localDate()) =>
   logFood({
     grams: q.grams, kcal: q.kcal, carbs_g: q.carbs_g, fat_g: q.fat_g, fiber_g: q.fiber_g ?? null, added_sugar_g: q.added_sugar_g ?? null,
     food_id: q.food_id, portion_label: q.portion_label, portion_qty: q.portion_qty, portion_grams: q.portion_grams,
     label: q.name, quick_add_id: q.id,
-  })
+  }, date)
 
 export function updateEntry(id: string, patch: Partial<NewEntry>) {
   const e = state.protein.find((x) => x.id === id)
@@ -702,8 +713,8 @@ const upsertCardio = (list: Cardio[], c: Cardio) =>
 
 export const cardioOn = (s: State, date: string) => s.cardio.filter((c) => c.local_date === date)
 
-export function logCardio(kind: CardioKind, minutes: number, effort: Effort) {
-  const entry: Cardio = { id: crypto.randomUUID(), kind, minutes, effort, performed_at: new Date().toISOString(), local_date: localDate() }
+export function logCardio(kind: CardioKind, minutes: number, effort: Effort, date = localDate()) {
+  const entry: Cardio = { id: crypto.randomUUID(), kind, minutes, effort, performed_at: stampOn(date), local_date: date }
   set({ cardio: upsertCardio(state.cardio, entry) })
   enqueue({ kind: 'cardio_save', entry })
   showToast(`Logged ${minutes} min`, () => {
@@ -779,16 +790,17 @@ export const WIN_TEXT: Record<Win, string> = {
 }
 export const EVENING_HOUR = 18  // the End of day card appears, and the day's eating counts as done, from 6 pm
 export const GOOD_DAY_WINS = 2
+export const MIN_FOODS = 2   // with fewer foods logged, "under calorie target" says nothing (and Today nudges)
 
 // What went well on a date. "Under calorie target" only counts once the day's eating is done
-// (a past day, or today from 6 pm): at noon, almost everyone is under target.
+// (a past day, or today from 6 pm) and at least 2 foods are logged: otherwise almost everyone is under target.
 export function winsOn(s: State, date: string, now = new Date()): Win[] {
   const wins: Win[] = []
   if (proteinTotal(s, date) > 0 && proteinTotal(s, date) >= goalFor(s, date)) wins.push('protein')
   const target = kcalGoalFor(s, date)
   const eaten = kcalEatenOn(s, date).total
   const dayDone = date < localDate(now) || now.getHours() >= EVENING_HOUR
-  if (target && eaten > 0 && eaten <= target && dayDone) wins.push('calories')
+  if (target && proteinOn(s, date).length >= MIN_FOODS && eaten <= target && dayDone) wins.push('calories')
   if (s.sessions.some((x) => x.local_date === date) || cardioOn(s, date).length) wins.push('trained')
   const h = habitsOn(s, date)
   if (h.sugar === 'avoided' && h.junk_food === 'avoided') wins.push('habits')
