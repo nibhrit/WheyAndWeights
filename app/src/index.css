@@ -327,3 +327,37 @@ nav.tabs { grid-template-columns: repeat(5, 1fr); }
 .ai-grid label { display: flex; flex-direction: column; gap: 2px; }
 .form .ai-grid input { height: 44px; font-size: 16px; padding: 0 10px; width: 100%; }
 .ai-grid label.tone-protein input { color: var(--protein-text); }
+
+/* Good days (TF-48): each win in its own colour from the system */
+.good-day { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; }
+.good-day b { margin-right: 2px; }
+.win { border-radius: 999px; padding: 3px 9px; font-size: 12px; font-weight: 600; background: var(--card); }
+.win-protein { color: var(--protein-text); background: var(--protein-track); }
+.win-trained { color: var(--lift); background: var(--lift-soft); }
+.win-habits { color: var(--habit); background: var(--habit-soft); }
+.win-calories { color: var(--ink); background: var(--line); }
+.good-days { flex-direction: row; align-items: baseline; justify-content: flex-start; gap: 10px; min-height: 0; }
+
+.celebrate {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 20;
+  top: calc(12px + env(safe-area-inset-top, 0px)); width: min(408px, calc(100% - 32px));
+  display: flex; align-items: center; gap: 14px; text-align: left;
+  background: var(--slab); color: var(--slab-fg); border-radius: 18px; padding: 14px 16px;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.25);
+  animation: celebrate-in 420ms cubic-bezier(.2, 1.3, .4, 1) both;
+}
+.celebrate-text { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.celebrate-text b { font-size: 17px; font-stretch: 125%; }
+.celebrate-wins { display: flex; flex-wrap: wrap; gap: 6px; }
+.celebrate-mark { width: 44px; height: 44px; flex: 0 0 auto; overflow: visible; fill: none; stroke: var(--slab-fg); stroke-linecap: round; stroke-linejoin: round; }
+.c-ring { stroke-width: 3; stroke-dasharray: 126; stroke-dashoffset: 126; animation: draw 500ms 150ms ease-out forwards; }
+.c-check { stroke-width: 3.5; stroke-dasharray: 32; stroke-dashoffset: 32; animation: draw 300ms 550ms ease-out forwards; }
+.c-ray { stroke: var(--slab-fg); stroke-width: 2.5; opacity: 0; animation: ray 600ms 650ms ease-out; }
+@keyframes celebrate-in { from { opacity: 0; transform: translate(-50%, -16px) scale(.96); } }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes ray { 0% { opacity: 1; transform-origin: 24px 24px; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .celebrate { animation: none; }
+  .c-ring, .c-check { animation: none; stroke-dashoffset: 0; }
+  .c-ray { display: none; }
+}

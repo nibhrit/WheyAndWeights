@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { groupsOn, habitsOn, lastSession, todaySession, useStore } from '../data/store'
+import { EVENING_HOUR, groupsOn, habitsOn, lastSession, todaySession, useStore } from '../data/store'
 import { GROUPS, type Exercise } from '../data/types'
 import { addDays, fmtDate, fmtDay, localDate } from '../lib/dates'
 import { fmtSets } from '../lib/format'
@@ -8,6 +8,7 @@ import QuickAdds from '../components/QuickAdds'
 import HabitsCard from '../components/HabitsCard'
 import { HabitsTile, KcalTile, ProteinTile } from '../components/DayTiles'
 import PastDay from './PastDay'
+import GoodDayLine from '../components/GoodDayLine'
 
 type Props = {
   onOpenExercise: (id: string, repeat: boolean) => void
@@ -15,7 +16,6 @@ type Props = {
   onGoToProtein: () => void
 }
 
-const EVENING_HOUR = 18 // the End of day card appears from 6 pm
 const LOOK_BACK = 7     // past days you can open from the date
 
 const dayLabel = (d: string, today: string) =>
@@ -74,6 +74,7 @@ export default function Today({ onOpenExercise, onGoToLift, onGoToProtein }: Pro
         <KcalTile date={today} onOpen={onGoToProtein} />
         <HabitsTile date={today} onOpen={() => setShowHabits(true)} />
       </div>
+      <GoodDayLine date={today} />
 
       <QuickAdds />
 

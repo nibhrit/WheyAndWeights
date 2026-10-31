@@ -770,3 +770,29 @@ export function streak(s: State) {
 }
 
 const sortByName = (list: Exercise[]) => [...list].sort((a, b) => a.name.localeCompare(b.name))
+
+// ---------- Good days ----------
+
+export type Win = 'protein' | 'calories' | 'trained' | 'habits'
+export const WIN_TEXT: Record<Win, string> = {
+  protein: 'Protein goal hit', calories: 'Under calorie target', trained: 'Trained', habits: 'No sugar or junk',
+}
+export const EVENING_HOUR = 18  // the End of day card appears, and the day's eating counts as done, from 6 pm
+export const GOOD_DAY_WINS = 2
+
+// What went well on a date. "Under calorie target" only counts once the day's eating is done
+// (a past day, or today from 6 pm): at noon, almost everyone is under target.
+export function winsOn(s: State, date: string, now = new Date()): Win[] {
+  const wins: Win[] = []
+  if (proteinTotal(s, date) > 0 && proteinTotal(s, date) >= goalFor(s, date)) wins.push('protein')
+  const target = kcalGoalFor(s, date)
+  const eaten = kcalEatenOn(s, date).total
+  const dayDone = date < localDate(now) || now.getHours() >= EVENING_HOUR
+  if (target && eaten > 0 && eaten <= target && dayDone) wins.push('calories')
+  if (s.sessions.some((x) => x.local_date === date) || cardioOn(s, date).length) wins.push('trained')
+  const h = habitsOn(s, date)
+  if (h.sugar === 'avoided' && h.junk_food === 'avoided') wins.push('habits')
+  return wins
+}
+
+export const isGoodDay = (s: State, date: string) => winsOn(s, date).length >= GOOD_DAY_WINS

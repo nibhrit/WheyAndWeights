@@ -9,6 +9,7 @@ import Protein from './screens/Protein'
 import Week from './screens/Week'
 import Cardio from './screens/Cardio'
 import Toast from './components/Toast'
+import Celebration from './components/Celebration'
 import { SettingsContext } from './lib/settingsContext'
 import { clearUser, loadForUser, useStore } from './data/store'
 
@@ -84,6 +85,7 @@ export default function App() {
         ))}
       </nav>
       <Toast />
+      {userId && <Celebration userId={userId} />}
     </div>
     </SettingsContext.Provider>
   )

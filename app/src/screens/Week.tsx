@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  bodyKg, deleteWeight, goalFor, habitsOn, kcalEatenOn, kcalGoalFor, kcalOn, logWeight, loggedOn, proteinTotal, streak, useStore,
+  bodyKg, deleteWeight, goalFor, habitsOn, isGoodDay, kcalEatenOn, kcalGoalFor, kcalOn, logWeight, loggedOn, proteinTotal, streak, useStore,
 } from '../data/store'
 import Header from '../components/Header'
 import type { BodyWeight, HabitKey, Unit } from '../data/types'
@@ -27,6 +27,7 @@ export default function Week() {
         <Tile n={count((d) => habitsOn(store, d).sugar === 'avoided')} label="no sugar" tone="habit" />
         <Tile n={count((d) => habitsOn(store, d).junk_food === 'avoided')} label="no junk food" tone="habit" />
       </div>
+      <GoodDays n={count((d) => isGoodDay(store, d))} />
 
       <HabitGrid days={days} today={today} />
       <p className="cap legend">Filled: avoided · Ring: had it · Dashed: not logged</p>
@@ -35,6 +36,16 @@ export default function Week() {
       <KcalCard days={days} today={today} />
       <BodyWeightCard />
     </>
+  )
+}
+
+// Good day = 2 or more of: protein goal hit, under calorie target, trained, no sugar or junk
+function GoodDays({ n }: { n: number }) {
+  return (
+    <div className="tile good-days">
+      <span className="num tile-num">{n}<span className="tile-of">/7</span></span>
+      <span className="cap">{n === 1 ? 'good day' : 'good days'} · 2 or more of protein, calories, training, habits</span>
+    </div>
   )
 }
 

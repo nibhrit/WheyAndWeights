@@ -3,6 +3,7 @@ import { cardioName, effortName, type HabitResult } from '../data/types'
 import { fmtSets, macroLine, timeOf } from '../lib/format'
 import { portionText } from '../lib/nutrition'
 import { HabitsTile, KcalTile, ProteinTile } from '../components/DayTiles'
+import GoodDayLine from '../components/GoodDayLine'
 
 const habitText = (r: HabitResult | null) => (r === 'avoided' ? 'Avoided' : r === 'had' ? 'Had it' : 'Not logged')
 
@@ -26,6 +27,7 @@ export default function PastDay({ date }: { date: string }) {
         <KcalTile date={date} />
         <HabitsTile date={date} />
       </div>
+      <GoodDayLine date={date} />
 
       {empty && <p className="cap empty">Nothing was logged on this day.</p>}
 
