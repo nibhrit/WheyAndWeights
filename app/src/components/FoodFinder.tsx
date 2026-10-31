@@ -405,15 +405,23 @@ function AiCard({ estimate: e, cacheId, submitLabel, onSubmit, onCancel, note, s
     kcal: String(e.kcal), grams: String(Math.round(e.protein_g)), carbs_g: String(Math.round(e.carbs_g)), fat_g: String(Math.round(e.fat_g)),
     fiber_g: String(Math.round(e.fiber_g)), added_sugar_g: String(Math.round(e.added_sugar_g)), portion_grams: String(e.grams),
   }))
+  // The numbers are for one serving (what the AI described); "How many" multiplies them, like other foods
+  const [qty, setQty] = useState('1')
+  const q = toNum(qty)
   const num = (k: string) => toNum(vals[k] ?? '')
   const bad = AI_FIELDS.find(([k, , max]) => !(num(k) >= 0 && num(k) <= max))
   const error = bad ? `Check ${bad[1].toLowerCase()} (0 to ${bad[2]}).`
     : num('portion_grams') < 1 ? 'Enter how many grams of food.'
     : !name.trim() ? 'Enter a name.'
-    : num('grams') === 0 && num('kcal') === 0 ? 'Enter protein or kcal.' : null
-  const r = (k: string) => Math.round(num(k))
+    : num('grams') === 0 && num('kcal') === 0 ? 'Enter protein or kcal.'
+    : !(q > 0 && q <= MAX_QTY) ? `Enter how many, up to ${MAX_QTY}.` : null
+  const r = (k: string) => Math.round(num(k) * (q || 0))
   const n: Nutrients = { grams: r('grams'), kcal: r('kcal'), carbs_g: r('carbs_g'), fat_g: r('fat_g'), fiber_g: r('fiber_g'), added_sugar_g: r('added_sugar_g') }
-  const ref: FoodRef = { food_id: aiFoodId(cacheId), portion_label: null, portion_qty: null, portion_grams: r('portion_grams') }
+  const serving = Math.round(num('portion_grams') * 10) / 10
+  const ref: FoodRef = {
+    food_id: aiFoodId(cacheId), portion_label: `1 serving (${fmtQty(serving)} g)`, portion_qty: q, portion_grams: Math.round(serving * q * 10) / 10,
+  }
+  const bump = (d: number) => setQty(fmtQty(Math.min(MAX_QTY, Math.max(QTY_STEP, Math.round(((q || 0) + d * QTY_STEP) / QTY_STEP) * QTY_STEP))))
 
   return (
     <form className="card form" noValidate onSubmit={(ev) => { ev.preventDefault(); if (!error) onSubmit(n, ref, name.trim()) }}>
@@ -424,6 +432,7 @@ function AiCard({ estimate: e, cacheId, submitLabel, onSubmit, onCancel, note, s
       <input className="full" aria-label="Name" value={name} onChange={(ev) => setName(ev.target.value)} />
       <p className="cap note">Assumed: {e.assumptions} Check the numbers; edit any you know better.</p>
       {note && <p className="cap note">{note}</p>}
+      <span className="cap">For 1 serving</span>
       <div className="ai-grid">
         {AI_FIELDS.map(([k, label]) => (
           <label key={k} className={k === 'grams' ? 'tone-protein' : undefined}>
@@ -432,6 +441,20 @@ function AiCard({ estimate: e, cacheId, submitLabel, onSubmit, onCancel, note, s
           </label>
         ))}
       </div>
+      <div className="qty-row">
+        <span className="cap">How many servings</span>
+        <div className="stepper">
+          <button type="button" className="pm" aria-label="Less" onClick={() => bump(-1)}>−</button>
+          <input className="weight num" inputMode="decimal" aria-label="Servings" value={qty} onChange={(ev) => setQty(ev.target.value)} />
+          <button type="button" className="pm" aria-label="More" onClick={() => bump(1)}>+</button>
+        </div>
+      </div>
+      {!error && q !== 1 && (
+        <div className="food-preview" aria-live="polite">
+          <span><span className="cap">about </span><span className="num tone-protein">{n.grams}</span> <span className="cap">g protein</span></span>
+          <span><span className="cap">about </span><span className="num">{n.kcal}</span> <span className="cap">kcal</span></span>
+        </div>
+      )}
       {error && <p className="err" role="alert">{error}</p>}
       <div className="two">
         <button type="button" className="btn ghost" onClick={onCancel}>Cancel</button>
