@@ -188,12 +188,12 @@ export default function FoodFinder({ initialQuery = '', submitLabel, onDone, onC
       {recent.length > 0 && (
         <>
           <span className="cap">Recent</span>
-          <div className="results">{recent.map((f) => <Result key={f.id} food={f} onPick={pick} />)}</div>
+          <div className="results">{recent.map((f) => <Result key={f.id} food={f} mine={mine.includes(f)} onPick={pick} />)}</div>
         </>
       )}
       {hits.length > 0 && (
         <div className="results">
-          {hits.map((h) => <Result key={h.food.id} food={h.food} brand={h.source === 'pack' ? packaged?.brandOf(h.food.id) ?? null : undefined} onPick={pick} />)}
+          {hits.map((h) => <Result key={h.food.id} food={h.food} mine={h.source === 'mine'} brand={h.source === 'pack' ? packaged?.brandOf(h.food.id) ?? null : undefined} onPick={pick} />)}
         </div>
       )}
       {liveItems.length > 0 && (
@@ -285,8 +285,8 @@ function PackResult({ p, onPick }: { p: Packaged; onPick: () => void }) {
   )
 }
 
-// brand: set for a packaged product from the list (shows "Pack · Brand")
-function Result({ food, brand, onPick }: { food: Food; brand?: string | null; onPick: (f: Food) => void }) {
+// brand: set for a packaged product from the list (shows "Pack · Brand"); mine: one of your own foods
+function Result({ food, brand, mine, onPick }: { food: Food; brand?: string | null; mine?: boolean; onPick: (f: Food) => void }) {
   const portion = defaultPortion(food)
   const n = nutrientsFor(food, portionGrams(portion, portion ? 1 : 100))
   const about = food.confidence === 'estimate'
@@ -294,7 +294,7 @@ function Result({ food, brand, onPick }: { food: Food; brand?: string | null; on
     <button className="result" onClick={() => onPick(food)}>
       <span className="row-main">
         <span>{food.name} {about && <span className="about">about</span>}{brand !== undefined && <span className="pack-tag">Pack{brand ? ` · ${brand}` : ''}</span>}</span>
-        <span className="cap" style={{ textAlign: 'left' }}>{portion?.label ?? '100 g'}{MINE_NOTE[food.source.name] ?? ''}</span>
+        <span className="cap" style={{ textAlign: 'left' }}>{portion?.label ?? '100 g'}{mine ? MINE_NOTE[food.source.name] ?? '' : ''}</span>
       </span>
       <span className="cap">{n.grams} g · {n.kcal} kcal</span>
     </button>

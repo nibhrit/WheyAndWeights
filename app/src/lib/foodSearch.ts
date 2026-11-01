@@ -141,11 +141,12 @@ const PACK_PENALTY = 0.75   // a pack ranks after a generic food that matches as
 const BRAND_BONUS = -0.6    // typed the brand: its products beat generic foods that only list the brand as an alias
 const MAX_PACKS = 6
 
+// The whole brand name is in the query ("bread" isn't the brand "Bread House"; "amul lassi" is Amul)
 export function brandTyped(query: string, brand: string | null): boolean {
   if (!brand) return false
   const q = normalize(query).split(' ')
-  const b = normalize(brand).split(' ')[0]
-  return !!b && q.includes(b)
+  const b = normalize(brand).split(' ').filter(Boolean)
+  return b.length > 0 && b.every((w) => q.includes(w))
 }
 
 export function searchAll(query: string, sources: {

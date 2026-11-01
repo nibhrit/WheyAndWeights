@@ -57,25 +57,33 @@ for await (const line of lines) {
 console.error(`${seenRows} rows read, ${raw.length} sold in India`)
 
 const reasons = {}
-const seen = new Set()
+const seen = new Map()
+// Letters and digits only, pack sizes dropped: "Parle-G 250g" → "parleg"
+const sameName = (s) => s.toLowerCase().replace(/\b\d+(\.\d+)?\s*(g|gm|gms|kg|ml|l|ltr)\b/g, '').replace(/[^a-z0-9]/g, '')
 const rows = []
 for (const p of raw) {
   const x = fromOff(p)
   if (!/^\d{8,14}$/.test(x.code)) { reasons.bad_code = (reasons.bad_code ?? 0) + 1; continue }
   if (x.issues.length) { for (const i of x.issues) reasons[i] = (reasons[i] ?? 0) + 1; continue }
   const brand = (p.brands?.split(',')[0] ?? '').trim()
-  const key = `${x.food.name.toLowerCase()}|${brand.toLowerCase()}`
-  if (seen.has(key)) { reasons.duplicate = (reasons.duplicate ?? 0) + 1; continue }
-  seen.add(key)
+  // Same product entered by different people: "Parle G", "Parle-g", "Parle - G 250g" → one (the most complete kept below)
+  const key = `${sameName(x.food.name)}|${sameName(brand)}`
+  const rank = x.food.portions.length * 2 + (x.per100.fiber_g != null) + (x.per100.added_sugar_g != null)
+  const prev = seen.get(key)
+  if (prev && prev.rank >= rank) { reasons.duplicate = (reasons.duplicate ?? 0) + 1; continue }
+  if (prev) { rows.splice(rows.indexOf(prev.row), 1); reasons.duplicate = (reasons.duplicate ?? 0) + 1 }
   const v = x.per100
   const r1 = (n) => (n == null ? null : Math.round(n * 10) / 10)
   // Compact row: code, name, brand, kcal, protein, carbs, fat, fibre, added sugar (per 100 g/ml), portions, liquid
-  rows.push([
-    x.code, x.food.name, brand || null,
+  const name = x.food.name.charAt(0).toUpperCase() + x.food.name.slice(1)   // "maggi" → "Maggi"
+  const row = [
+    x.code, name, brand || null,
     Math.round(v.kcal), r1(v.protein_g), r1(v.carbs_g), r1(v.fat_g), r1(v.fiber_g), r1(v.added_sugar_g),
     x.food.portions.map((q) => [q.label, q.grams]),
     x.food.notes ? 1 : 0,
-  ])
+  ]
+  rows.push(row)
+  seen.set(key, { rank, row })
 }
 rows.sort((a, b) => a[1].localeCompare(b[1]))
 

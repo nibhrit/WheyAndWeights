@@ -265,6 +265,8 @@ Every table carries `user_id`, and row-level security restricts each user to the
 | D17 | Barcode reading on iPhone | ZXing (WebAssembly) via `barcode-detector`, loaded only when scanning, served from the app | Safari has no BarcodeDetector; a CDN would break offline use and add a third party |
 | D18 | Reminder conditions | **Only when still relevant**, checked on the server at send time (not scheduled in advance) | A reminder for something already done teaches people to ignore reminders |
 | D19 | Reminder delivery | Web Push from a Supabase Edge Function on a 15-min pg_cron schedule; VAPID private key and cron secret only in Supabase | No extra service to run; the app stays a static site on GitHub Pages |
+| D20 | Packaged foods in search | **~8,900 Indian products inside the app** (monthly build from Open Food Facts' export), one ranked search with generic foods; live lookup only when nothing local matches | One search box was the ask; their search API allows 10 a minute, too few for as-you-type |
+| D21 | Meals | A meal = foods logged within 45 minutes on one day; "Repeat a meal" copies one to the day being viewed | No extra step when logging; meals emerge from how people already log |
 
 ---
 

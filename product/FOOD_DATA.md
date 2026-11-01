@@ -158,6 +158,13 @@ Cross-check against other tables (kcal per 100 g, Whey & Weights / other):
 from [Open Food Facts](https://world.openfoodfacts.org) and never copied into `foods.json`. Code: `app/src/lib/packaged.ts`
 (turning a record into a food, data checks), `app/src/lib/off.ts` (lookups), `supabase/functions/food-search` (name search relay).
 
+- **Indian packaged list (TF-57).** About 8,900 packaged products sold in India are inside the app
+  (`app/src/data/packaged/packaged-in.json`, built monthly by `build-packaged.mjs` from Open Food Facts' daily export,
+  cleaned with the checks below, near-duplicates merged). It is a separate database under ODbL (`LICENSE.md` there),
+  never mixed into `foods.json`. It loads on first search (~290 KB compressed), works offline, and appears in the same
+  search as everything else, tagged "Pack · Brand". Generic foods rank first unless the brand is typed.
+- **Live fallback.** When nothing local matches well, the app looks the name up on Open Food Facts after a short pause
+  (through `food-search`), so products outside the India list can still be found.
 - **Barcode lookup** goes from the phone straight to Open Food Facts (15 lookups a minute per person; the app stays under 12).
   Looked-up products are kept on the device (newest 100), so a re-scan works offline.
 - **Name search** goes through the `food-search` Edge Function, because the search service doesn't accept calls from a web
