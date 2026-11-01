@@ -100,10 +100,8 @@ export default function App() {
           <Week />
         ) : (
           <Today
-            onOpenExercise={(id, repeat) => { setLiftTarget({ id, repeat, key: Date.now() }); setTab('lift') }}
             onGoToLift={() => { setLiftTarget(null); setTab('lift') }}
             onGoToProtein={() => setTab('protein')}
-            onGoToCardio={() => setTab('cardio')}
           />
         )}
       </main>

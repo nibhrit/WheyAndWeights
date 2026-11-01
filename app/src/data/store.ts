@@ -858,6 +858,15 @@ export function kcalOn(s: State, date: string) {
   return { cardio: Math.round(cardio), lifting: Math.round(lifting), total: Math.round(cardio + lifting) }
 }
 
+// Net calorie deficit for a day (TF-66), as Nibhrit defined it: how far under the calorie target you ate, plus
+// what exercise burnt. Positive = deficit, negative = surplus. null without a target, or with no food logged that day
+// (an empty log would read as a huge deficit).
+export function netDeficitOn(s: State, date: string): number | null {
+  const target = kcalGoalFor(s, date)
+  if (!target || !s.protein.some((e) => e.local_date === date)) return null
+  return target - kcalEatenOn(s, date).total + kcalOn(s, date).total
+}
+
 // ---------- Insights ----------
 
 // A day counts as logged if anything was recorded: a lift, food, a habit answer, body weight or cardio
