@@ -27,11 +27,13 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 
 export default function App() {
   const session = useSession()
-  // A reminder opens the app on a tab (?tab=protein); otherwise Today
-  const [tab, setTab] = useState<Tab>(() => {
-    const t = new URLSearchParams(location.search).get('tab')
+  // A reminder opens the app on a tab (?tab=protein); a reload (e.g. iOS going back past the first page) returns to
+  // the tab you were on in this session; otherwise Today
+  const [tab, setTabState] = useState<Tab>(() => {
+    const t = new URLSearchParams(location.search).get('tab') ?? (() => { try { return sessionStorage.getItem('ww:tab') } catch { return null } })()
     return TABS.some((x) => x.id === t) ? (t as Tab) : 'today'
   })
+  const setTab = (t: Tab) => { setTabState(t); try { sessionStorage.setItem('ww:tab', t) } catch { /* private mode */ } }
   const [showSettings, setShowSettings] = useState(false)
   const [liftTarget, setLiftTarget] = useState<LiftTarget | null>(null)
   const userId = session?.user.id

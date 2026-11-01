@@ -39,20 +39,31 @@ export function useBackStep(open: boolean, close: () => void) {
 const EDGE = 24       // px from the left edge where the swipe must start
 const DISTANCE = 70   // px to the right before it counts
 
-// Swipe right from the left edge = back, when something is open (installed once, in App)
+// Swipe right from the left edge = back, when something is open (installed once, in App).
+// Some iPhones do have their own swipe-back in home-screen apps; then iOS goes back itself and ours must not go back
+// a second time (that went past the app's first page, which reloads it on Today). So ours waits a moment and only
+// acts if no back happened since the swipe started.
+let lastPop = 0
+addEventListener('popstate', () => { lastPop = Date.now() })
+
 export function installEdgeSwipe() {
-  let start: { x: number; y: number } | null = null
+  let start: { x: number; y: number; at: number; depth: number } | null = null
   const down = (e: TouchEvent) => {
     const t = e.touches[0]
-    start = e.touches.length === 1 && t.clientX <= EDGE && stack.length ? { x: t.clientX, y: t.clientY } : null
+    start = e.touches.length === 1 && t.clientX <= EDGE && stack.length ? { x: t.clientX, y: t.clientY, at: Date.now(), depth: stack.length } : null
   }
   const up = (e: TouchEvent) => {
     if (!start) return
     const t = e.changedTouches[0]
     const dx = t.clientX - start.x
     const dy = Math.abs(t.clientY - start.y)
+    const s = start
     start = null
-    if (dx > DISTANCE && dy < dx * 0.6 && stack.length) history.back()
+    if (!(dx > DISTANCE && dy < dx * 0.6)) return
+    setTimeout(() => {
+      if (lastPop >= s.at || stack.length < s.depth || !stack.length) return   // iOS already went back
+      history.back()
+    }, 350)
   }
   const cancel = () => { start = null }
   window.addEventListener('touchstart', down, { passive: true })
