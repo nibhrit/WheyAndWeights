@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import {
-  bodyKg, deleteWeight, goalFor, habitsOn, isGoodDay, kcalEatenOn, kcalGoalFor, kcalOn, logWeight, loggedOn, proteinTotal, streak, useStore,
+  activeHabits, bodyKg, deleteWeight, goalFor, habitAnswer, habitsOn, isGoodDay, kcalEatenOn, kcalGoalFor, kcalOn, logWeight, loggedOn, proteinTotal, streak, useStore,
 } from '../data/store'
 import Header from '../components/Header'
-import type { BodyWeight, HabitKey, Unit } from '../data/types'
+import type { BodyWeight, Unit } from '../data/types'
 import { addDays, fmtDate, fmtDay, localDate, weekDays, weekStart } from '../lib/dates'
 import { fmtWeight } from '../lib/format'
 import TrendChart from '../components/TrendChart'
@@ -24,13 +24,12 @@ export default function Week() {
       <div className="tiles four">
         <Tile n={count((d) => loggedOn(store, d))} label={run > 1 ? `days logged · ${run}-day streak` : 'days logged'} tone="lift" />
         <Tile n={proteinHits} label="protein goal hit" tone="protein" />
-        <Tile n={count((d) => habitsOn(store, d).sugar === 'avoided')} label="no sugar" tone="habit" />
-        <Tile n={count((d) => habitsOn(store, d).junk_food === 'avoided')} label="no junk food" tone="habit" />
+        <Tile n={count((d) => { const h = habitsOn(store, d); return h.total > 0 && h.good === h.total })} label="all habits kept" tone="habit" />
+        <Tile n={count((d) => isGoodDay(store, d))} label="good days" />
       </div>
-      <GoodDays n={count((d) => isGoodDay(store, d))} />
 
       <HabitGrid days={days} today={today} />
-      <p className="cap legend">Filled: avoided · Ring: had it · Dashed: not logged</p>
+      <p className="cap legend">Filled: done or avoided · Ring: missed or had it · Dashed: not logged</p>
 
       <ProteinCard />
       <KcalCard days={days} today={today} />
@@ -39,20 +38,11 @@ export default function Week() {
   )
 }
 
-// Good day = 2 or more of: protein goal hit, under calorie target, trained, no sugar or junk
-function GoodDays({ n }: { n: number }) {
-  return (
-    <div className="tile good-days">
-      <span className="num tile-num">{n}<span className="tile-of">/7</span></span>
-      <span className="cap">{n === 1 ? 'good day' : 'good days'} · 2 or more of protein, calories, training, habits</span>
-    </div>
-  )
-}
-
-function Tile({ n, label, tone }: { n: number; label: string; tone: 'lift' | 'protein' | 'habit' }) {
+// tone: the colour of what it counts; none (ink) for mixed things like good days
+function Tile({ n, label, tone }: { n: number; label: string; tone?: 'lift' | 'protein' | 'habit' }) {
   return (
     <div className="tile">
-      <span className={`num tile-num tone-${tone}`}>{n}<span className="tile-of">/7</span></span>
+      <span className={`num tile-num${tone ? ` tone-${tone}` : ''}`}>{n}<span className="tile-of">/7</span></span>
       <span className="cap">{label}</span>
     </div>
   )
@@ -63,15 +53,14 @@ type DotState = 'on' | 'off' | 'ok' | 'had' | 'none' | 'future'
 // One grid instead of three cards: a row each for Logged, Sugar and Junk food
 function HabitGrid({ days, today }: { days: string[]; today: string }) {
   const store = useStore()
-  const habitState = (d: string, key: HabitKey): DotState => {
+  const habitState = (d: string, id: string): DotState => {
     if (d > today) return 'future'
-    const v = habitsOn(store, d)[key]
-    return v === 'avoided' ? 'ok' : v === 'had' ? 'had' : 'none'
+    const v = habitAnswer(store, d, id)
+    return v === 'yes' ? 'ok' : v === 'no' ? 'had' : 'none'
   }
   const rows: [string, (d: string) => DotState][] = [
     ['Logged', (d) => (d > today ? 'future' : loggedOn(store, d) ? 'on' : 'off')],
-    ['Sugar', (d) => habitState(d, 'sugar')],
-    ['Junk', (d) => habitState(d, 'junk_food')],
+    ...activeHabits(store).map((h): [string, (d: string) => DotState] => [h.name, (d) => habitState(d, h.id)]),
   ]
   return (
     <div className="card grid-week" role="table" aria-label="This week by day">

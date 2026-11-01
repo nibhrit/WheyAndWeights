@@ -50,14 +50,10 @@ export function KcalTile({ date, onOpen }: TileProps) {
 export function HabitsTile({ date, onOpen }: TileProps) {
   const store = useStore()
   const h = habitsOn(store, date)
-  const logged = [h.sugar, h.junk_food].filter(Boolean).length
-  const avoided = [h.sugar, h.junk_food].filter((x) => x === 'avoided').length
-  // Today counts answers so far; a past day shows how many were avoided
-  const n = onOpen ? logged : avoided
   return (
-    <Tile onOpen={onOpen} label={onOpen ? `Habits: ${logged} of 2 logged` : `Habits: ${avoided} of 2 avoided`}>
-      <span className="num tile-num habit-num">{n}<span className="tile-of">/2</span></span>
-      <span className="cap">{onOpen ? 'habits' : 'avoided'}</span>
+    <Tile onOpen={onOpen} label={`Habits: ${h.answered} of ${h.total} logged`}>
+      <span className="num tile-num habit-num">{h.answered}<span className="tile-of">/{h.total}</span></span>
+      <span className="cap">habits</span>
     </Tile>
   )
 }

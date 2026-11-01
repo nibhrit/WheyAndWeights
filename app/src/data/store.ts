@@ -2,12 +2,13 @@ import { useSyncExternalStore } from 'react'
 import { supabase } from '../lib/supabase'
 import {
   DEFAULT_GOAL, NO_FOOD, NO_NUTRIENTS, STARTERS, STARTER_FOODS,
-  type BodyWeight, type Cardio, type CalorieGoal, type DayHabits, type Exercise, type FitnessGoal, type FoodRef, type HabitKey, type HabitResult,
+  type BodyWeight, type Cardio, type CalorieGoal, type DayHabits, type Exercise, type FitnessGoal, type FoodRef, type Habit, type HabitAnswer, type HabitKind, MAX_HABITS, type Meal,
   type LiftSet, type MuscleGroup, type Nutrients, type ProteinEntry, type ProteinGoal, type QuickAdd,
   type Session, type Settings, type Splits, type Unit,
 } from './types'
 import type { CardioKind, Effort } from './types'
 import { addDays, localDate } from '../lib/dates'
+import { mealAt } from '../lib/meals'
 import { DEFAULT_BODY_KG, cardioKcal, liftKcal } from '../lib/calories'
 
 // One shared store for the signed-in user's data.
@@ -26,7 +27,8 @@ type State = {
   quickAdds: QuickAdd[]
   goals: ProteinGoal[]
   kcalGoals: CalorieGoal[]  // calorie target history; empty until one is set
-  habits: Record<string, DayHabits>   // by date
+  habitList: Habit[]                  // your habits, archived ones included (their history still shows)
+  habitLogs: Record<string, Record<string, HabitAnswer>>   // date → habit id → answer
   weights: BodyWeight[]               // oldest first
   cardio: Cardio[]                    // oldest first
   ownFoods: ProteinEntry[]            // entries from AI estimates, scanned packs and pack labels, any age (newest 300): searchable
@@ -38,7 +40,10 @@ type Op =
   | { kind: 'delete'; id: string }
   | { kind: 'protein_save'; entry: ProteinEntry }
   | { kind: 'protein_delete'; id: string }
-  | { kind: 'habit_save'; day: DayHabits }
+  | { kind: 'habit_save'; day: DayHabits }          // before TF-65; only sent if still queued from before the update
+  | { kind: 'habit_def_save'; habit: Habit }
+  | { kind: 'habit_log_save'; habit_id: string; date: string; result: HabitAnswer }
+  | { kind: 'habit_log_delete'; habit_id: string; date: string }
   | { kind: 'weight_save'; entry: BodyWeight }
   | { kind: 'weight_delete'; date: string }
   | { kind: 'goal_save'; goal: ProteinGoal }
@@ -54,7 +59,7 @@ type Toast = { id: number; message: string; undo?: () => void }
 
 const EMPTY: State = {
   loaded: false, exercises: [], settings: { body_weight_unit: 'kg', fitness_goal: 'maintain' }, splits: {}, sessions: [],
-  protein: [], quickAdds: [], goals: [], kcalGoals: [], habits: {}, weights: [], cardio: [], ownFoods: [], pending: 0,
+  protein: [], quickAdds: [], goals: [], kcalGoals: [], habitList: [], habitLogs: {}, weights: [], cardio: [], ownFoods: [], pending: 0,
 }
 
 let state: State = EMPTY
@@ -104,7 +109,7 @@ export async function loadForUser(id: string) {
   }
   await flushOutbox()
   const today = localDate()
-  const [ex, st, sp, ss, pe, qa, pg, kg, hb, bw, cd] = await Promise.all([
+  const [ex, st, sp, ss, pe, qa, pg, kg, hd, hb, bw, cd] = await Promise.all([
     supabase.from('exercises').select('id,name,muscle_group,default_unit,archived_at,created_at').is('archived_at', null).order('name'),
     supabase.from('user_settings').select('body_weight_unit,fitness_goal').maybeSingle(),
     fetchSplits(addDays(today, -42), addDays(today, 42)),
@@ -112,17 +117,18 @@ export async function loadForUser(id: string) {
       .select('id,exercise_id,performed_at,local_date,lift_sets(set_number,weight,unit)')
       .gte('local_date', addDays(today, -365))
       .order('performed_at', { ascending: false }),
-    supabase.from('protein_entries').select(`id,label,quick_add_id,logged_at,local_date,${FOOD_COLS}`)
+    supabase.from('protein_entries').select(`id,label,quick_add_id,logged_at,local_date,meal,${FOOD_COLS}`)
       .gte('local_date', addDays(today, -40)).order('logged_at'),
     supabase.from('quick_adds').select(QUICK_COLS).order('sort_order').order('name'),
     supabase.from('protein_goals').select('goal_g,effective_from').order('effective_from'),
     supabase.from('calorie_goals').select('goal_kcal,effective_from').order('effective_from'),
-    supabase.from('daily_habits').select('date,sugar,junk_food').gte('date', addDays(today, -100)),
+    supabase.from('habits').select('id,name,kind,sort_order,archived_at').order('sort_order'),
+    supabase.from('habit_logs').select('habit_id,date,result').gte('date', addDays(today, -100)),
     supabase.from('body_weights').select('date,weight,unit').gte('date', addDays(today, -400)).order('date'),
     supabase.from('cardio_sessions').select('id,kind,minutes,effort,performed_at,local_date')
       .gte('local_date', addDays(today, -120)).order('performed_at'),
   ])
-  if (ex.error || st.error || !sp || ss.error || pe.error || qa.error || pg.error || kg.error || hb.error || bw.error || cd.error) {
+  if (ex.error || st.error || !sp || ss.error || pe.error || qa.error || pg.error || kg.error || hd.error || hb.error || bw.error || cd.error) {
     if (!state.loaded) showToast('Couldn’t load your data. Showing what’s saved on this device.')
     return
   }
@@ -141,13 +147,14 @@ export async function loadForUser(id: string) {
     quickAdds: applyQuickOutbox((qa.data as QuickAdd[]).map(numericPortion)),
     goals: applyGoalOutbox(pg.data as ProteinGoal[]),
     kcalGoals: applyKcalGoalOutbox(kg.data as CalorieGoal[]),
-    habits: applyHabitOutbox(Object.fromEntries((hb.data as DayHabits[]).map((d) => [d.date, d]))),
+    habitList: applyHabitDefOutbox(hd.data as Habit[]),
+    habitLogs: applyHabitLogOutbox(byDate(hb.data as { habit_id: string; date: string; result: HabitAnswer }[])),
     weights: applyWeightOutbox((bw.data as BodyWeight[]).map((w) => ({ ...w, weight: Number(w.weight) }))),
     cardio: applyCardioOutbox(cd.data as Cardio[]),
   })
   // Not needed to show anything, so it doesn't hold up loading
   const { data: ai, error: aiError } = await supabase.from('protein_entries')
-    .select(`id,label,quick_add_id,logged_at,local_date,${FOOD_COLS}`)
+    .select(`id,label,quick_add_id,logged_at,local_date,meal,${FOOD_COLS}`)
     .or('food_id.like.ai:*,food_id.like.off:*,food_id.like.label:*').order('logged_at', { ascending: false }).limit(300)
   if (!aiError && ai) set({ ownFoods: (ai as ProteinEntry[]).map(numericPortion) })
 }
@@ -329,6 +336,8 @@ function opKey(op: Op) {
     case 'protein_save': return `protein:${op.entry.id}`
     case 'protein_delete': return `protein:${op.id}`
     case 'habit_save': return `habit:${op.day.date}`
+    case 'habit_def_save': return `habitdef:${op.habit.id}`
+    case 'habit_log_save': case 'habit_log_delete': return `habitlog:${op.habit_id}:${op.date}`
     case 'weight_save': return `weight:${op.entry.date}`
     case 'weight_delete': return `weight:${op.date}`
     case 'goal_save': return `goal:${op.goal.effective_from}`
@@ -370,8 +379,16 @@ function applySettingsOutbox(settings: Settings) {
   return outbox.reduce((s, op) => (op.kind === 'settings_save' ? op.settings : s), settings)
 }
 
-function applyHabitOutbox(habits: Record<string, DayHabits>) {
-  return outbox.reduce((h, op) => (op.kind === 'habit_save' ? { ...h, [op.day.date]: op.day } : h), habits)
+const byDate = (rows: { habit_id: string; date: string; result: HabitAnswer }[]) =>
+  rows.reduce<Record<string, Record<string, HabitAnswer>>>((m, r) => ({ ...m, [r.date]: { ...m[r.date], [r.habit_id]: r.result } }), {})
+
+function applyHabitDefOutbox(list: Habit[]) {
+  return outbox.reduce((l, op) => (op.kind === 'habit_def_save' ? upsertHabit(l, op.habit) : l), list)
+}
+
+function applyHabitLogOutbox(logs: Record<string, Record<string, HabitAnswer>>) {
+  return outbox.reduce((m, op) => op.kind === 'habit_log_save' ? withAnswer(m, op.date, op.habit_id, op.result)
+    : op.kind === 'habit_log_delete' ? withAnswer(m, op.date, op.habit_id, null) : m, logs)
 }
 
 function applyWeightOutbox(weights: BodyWeight[]) {
@@ -410,6 +427,12 @@ function send(op: Op) {
       return supabase.from('protein_entries').delete().eq('id', op.id)
     case 'habit_save':
       return supabase.from('daily_habits').upsert({ ...op.day, updated_at: new Date().toISOString() }, { onConflict: 'user_id,date' })
+    case 'habit_def_save':
+      return supabase.from('habits').upsert(op.habit)
+    case 'habit_log_save':
+      return supabase.from('habit_logs').upsert({ habit_id: op.habit_id, date: op.date, result: op.result, updated_at: new Date().toISOString() }, { onConflict: 'habit_id,date' })
+    case 'habit_log_delete':
+      return supabase.from('habit_logs').delete().eq('habit_id', op.habit_id).eq('date', op.date)
     case 'weight_save':
       return supabase.from('body_weights').upsert({ ...op.entry, updated_at: new Date().toISOString() }, { onConflict: 'user_id,date' })
     case 'weight_delete':
@@ -512,12 +535,13 @@ export function kcalGoalFor(s: State, date: string): number | null {
   return [...s.kcalGoals].reverse().find((x) => x.effective_from <= date)?.goal_kcal ?? null
 }
 
-export type NewEntry = Nutrients & FoodRef & { label: string | null; quick_add_id?: string | null }
+export type NewEntry = Nutrients & FoodRef & { label: string | null; quick_add_id?: string | null; meal?: Meal | null }
 
-export function logFood(input: NewEntry, date = localDate()) {
+// meal: the one picked on the Food tab; defaults to the one the time of day suggests
+export function logFood(input: NewEntry, date = localDate(), meal: Meal = mealAt()) {
   const entry: ProteinEntry = {
     ...NO_FOOD, quick_add_id: null, ...input, label: input.label?.trim() || null,
-    id: crypto.randomUUID(), logged_at: stampOn(date), local_date: date,
+    id: crypto.randomUUID(), logged_at: stampOn(date), local_date: date, meal,
   }
   set({ protein: upsertEntry(state.protein, entry) })
   enqueue({ kind: 'protein_save', entry })
@@ -532,12 +556,12 @@ export function logFood(input: NewEntry, date = localDate()) {
 export const logProtein = (grams: number, label: string | null) =>
   logFood({ grams, ...NO_NUTRIENTS, ...NO_FOOD, label })
 
-export const logQuickAdd = (q: QuickAdd, date = localDate()) =>
+export const logQuickAdd = (q: QuickAdd, date = localDate(), meal: Meal = mealAt()) =>
   logFood({
     grams: q.grams, kcal: q.kcal, carbs_g: q.carbs_g, fat_g: q.fat_g, fiber_g: q.fiber_g ?? null, added_sugar_g: q.added_sugar_g ?? null,
     food_id: q.food_id, portion_label: q.portion_label, portion_qty: q.portion_qty, portion_grams: q.portion_grams,
     label: q.name, quick_add_id: q.id,
-  }, date)
+  }, date, meal)
 
 export function updateEntry(id: string, patch: Partial<NewEntry>) {
   const e = state.protein.find((x) => x.id === id)
@@ -549,9 +573,10 @@ export function updateEntry(id: string, patch: Partial<NewEntry>) {
 }
 
 // Repeat a meal (TF-59): log copies of several entries to a day, as one action with one Undo
-export function logMeal(name: string, entries: ProteinEntry[], date = localDate()) {
+// The copies go into the same meal they came from
+export function logMeal(name: string, entries: ProteinEntry[], date = localDate(), meal?: Meal) {
   const stamp = stampOn(date)
-  const copies: ProteinEntry[] = entries.map((e) => ({ ...e, id: crypto.randomUUID(), logged_at: stamp, local_date: date }))
+  const copies: ProteinEntry[] = entries.map((e) => ({ ...e, id: crypto.randomUUID(), logged_at: stamp, local_date: date, meal: meal ?? e.meal ?? mealAt(new Date(e.logged_at)) }))
   let protein = state.protein
   for (const c of copies) { protein = upsertEntry(protein, c); enqueue({ kind: 'protein_save', entry: c }) }
   set({ protein })
@@ -683,14 +708,67 @@ export const foodsWithoutKcal = (s: State) => s.quickAdds.filter((q) => q.kcal =
 
 // ---------- Habits ----------
 
-export const habitsOn = (s: State, date: string): DayHabits => s.habits[date] ?? { date, sugar: null, junk_food: null }
+const upsertHabit = (list: Habit[], h: Habit) => [...list.filter((x) => x.id !== h.id), h].sort((a, b) => a.sort_order - b.sort_order)
+function withAnswer(m: Record<string, Record<string, HabitAnswer>>, date: string, id: string, a: HabitAnswer | null) {
+  const day = { ...m[date] }
+  if (a) day[id] = a; else delete day[id]
+  return { ...m, [date]: day }
+}
+
+export const activeHabits = (s: State) => s.habitList.filter((h) => !h.archived_at)
+export const habitAnswer = (s: State, date: string, id: string): HabitAnswer | null => s.habitLogs[date]?.[id] ?? null
+// How today went: answered and good ("yes") counts, over your active habits
+export function habitsOn(s: State, date: string) {
+  const list = activeHabits(s)
+  const answers = list.map((h) => habitAnswer(s, date, h.id))
+  return { total: list.length, answered: answers.filter(Boolean).length, good: answers.filter((a) => a === 'yes').length }
+}
 
 // Tap the selected answer again to clear it
-export function setHabit(key: HabitKey, value: HabitResult, date = localDate()) {
-  const current = habitsOn(state, date)
-  const day: DayHabits = { ...current, [key]: current[key] === value ? null : value }
-  set({ habits: { ...state.habits, [date]: day } })
-  enqueue({ kind: 'habit_save', day })
+export function setHabitAnswer(id: string, answer: HabitAnswer, date = localDate()) {
+  const clear = habitAnswer(state, date, id) === answer
+  set({ habitLogs: withAnswer(state.habitLogs, date, id, clear ? null : answer) })
+  enqueue(clear ? { kind: 'habit_log_delete', habit_id: id, date } : { kind: 'habit_log_save', habit_id: id, date, result: answer })
+}
+
+function saveHabit(h: Habit) {
+  set({ habitList: upsertHabit(state.habitList, h) })
+  enqueue({ kind: 'habit_def_save', habit: h })
+}
+
+export function addHabit(name: string, kind: HabitKind): string | null {
+  const n = name.trim().replace(/\s+/g, ' ')
+  if (!n || n.length > 40) return 'Give it a name of up to 40 characters.'
+  if (activeHabits(state).length >= MAX_HABITS) return `Up to ${MAX_HABITS} habits. Remove one first.`
+  if (activeHabits(state).some((h) => h.name.toLowerCase() === n.toLowerCase())) return 'You already have that habit.'
+  saveHabit({ id: crypto.randomUUID(), name: n, kind, sort_order: Math.max(-1, ...state.habitList.map((h) => h.sort_order)) + 1, archived_at: null })
+  return null
+}
+
+export function updateHabit(id: string, patch: Partial<Pick<Habit, 'name' | 'kind'>>): string | null {
+  const h = state.habitList.find((x) => x.id === id)
+  if (!h) return null
+  const name = patch.name?.trim().replace(/\s+/g, ' ')
+  if (patch.name !== undefined && (!name || name.length > 40)) return 'Give it a name of up to 40 characters.'
+  saveHabit({ ...h, ...patch, ...(name && { name }) })
+  return null
+}
+
+export function moveHabit(id: string, dir: -1 | 1) {
+  const list = activeHabits(state)
+  const i = list.findIndex((h) => h.id === id)
+  const j = i + dir
+  if (i < 0 || j < 0 || j >= list.length) return
+  saveHabit({ ...list[i], sort_order: list[j].sort_order })
+  saveHabit({ ...list[j], sort_order: list[i].sort_order })
+}
+
+// Removing keeps the history (archived); Undo brings it back
+export function removeHabit(id: string) {
+  const h = state.habitList.find((x) => x.id === id)
+  if (!h) return
+  saveHabit({ ...h, archived_at: new Date().toISOString() })
+  showToast(`Removed “${h.name}”`, () => saveHabit({ ...h, archived_at: null }))
 }
 
 // ---------- Body weight ----------
@@ -784,10 +862,9 @@ export function kcalOn(s: State, date: string) {
 
 // A day counts as logged if anything was recorded: a lift, food, a habit answer, body weight or cardio
 export function loggedOn(s: State, date: string) {
-  const h = s.habits[date]
   return s.sessions.some((x) => x.local_date === date)
     || s.protein.some((x) => x.local_date === date)
-    || !!(h && (h.sugar || h.junk_food))
+    || Object.keys(s.habitLogs[date] ?? {}).length > 0
     || s.weights.some((w) => w.date === date)
     || s.cardio.some((c) => c.local_date === date)
 }
@@ -807,7 +884,7 @@ const sortByName = (list: Exercise[]) => [...list].sort((a, b) => a.name.localeC
 
 export type Win = 'protein' | 'calories' | 'trained' | 'habits'
 export const WIN_TEXT: Record<Win, string> = {
-  protein: 'Protein goal hit', calories: 'Under calorie target', trained: 'Trained', habits: 'No sugar or junk',
+  protein: 'Protein goal hit', calories: 'Under calorie target', trained: 'Trained', habits: 'All habits kept',
 }
 export const EVENING_HOUR = 18  // the End of day card appears, and the day's eating counts as done, from 6 pm
 export const GOOD_DAY_WINS = 2
@@ -824,7 +901,7 @@ export function winsOn(s: State, date: string, now = new Date()): Win[] {
   if (target && proteinOn(s, date).length >= MIN_FOODS && eaten <= target && dayDone) wins.push('calories')
   if (s.sessions.some((x) => x.local_date === date) || cardioOn(s, date).length) wins.push('trained')
   const h = habitsOn(s, date)
-  if (h.sugar === 'avoided' && h.junk_food === 'avoided') wins.push('habits')
+  if (h.total > 0 && h.good === h.total) wins.push('habits')
   return wins
 }
 

@@ -304,28 +304,30 @@ test('reminders: only sent when still relevant', () => {
   assert.equal(messageFor('workout', { ...f, planned: false }), null)
 })
 
-// ---------- Repeat a meal (TF-59) ----------
-import { groupMeals, mealName, recentMeals } from '../src/lib/meals.ts'
+// ---------- Repeat a meal (TF-59, TF-63) ----------
+import { groupMeals, mealAt, recentMeals } from '../src/lib/meals.ts'
 
-test('meals: entries within 45 minutes on a day are one meal; repeats shown once, newest first', () => {
+test('meals: grouped by the meal picked, not by when it was logged; repeats shown once, newest first', () => {
   const at = (d: string, hm: string) => new Date(`${d}T${hm}:00`).toISOString()
-  const e = (id: string, d: string, hm: string, label: string, grams: number) => ({
+  const e = (id: string, d: string, hm: string, label: string, grams: number, meal?: 'breakfast' | 'lunch' | 'snacks' | 'dinner') => ({
     id, label, local_date: d, logged_at: at(d, hm), grams, kcal: grams * 10, quick_add_id: null, carbs_g: null, fat_g: null, fiber_g: null,
-    added_sugar_g: null, food_id: label.toLowerCase(), portion_label: '1 katori', portion_qty: 1, portion_grams: 150,
+    added_sugar_g: null, food_id: label.toLowerCase(), portion_label: '1 katori', portion_qty: 1, portion_grams: 150, meal,
   })
   const entries = [
-    e('a', '2026-10-30', '13:00', 'Dal', 9), e('b', '2026-10-30', '13:20', 'Roti', 6), e('c', '2026-10-30', '14:00', 'Curd', 5),  // lunch (chained gaps ≤ 45)
-    e('d', '2026-10-30', '20:30', 'Paneer', 20),                                                                                    // single: not listed
-    e('f', '2026-10-31', '13:05', 'Dal', 9), e('g', '2026-10-31', '13:10', 'Roti', 6), e('h', '2026-10-31', '13:15', 'Curd', 5),  // same lunch again
-    e('i', '2026-10-31', '08:00', 'Eggs', 18), e('j', '2026-10-31', '08:10', 'Toast', 4),                                          // breakfast
+    // lunch and dinner logged together at 11 pm: two meals, not one
+    e('a', '2026-10-30', '23:00', 'Dal', 9, 'lunch'), e('b', '2026-10-30', '23:00', 'Roti', 6, 'lunch'),
+    e('c', '2026-10-30', '23:01', 'Paneer', 20, 'dinner'), e('d', '2026-10-30', '23:01', 'Rice', 3, 'dinner'),
+    // the same lunch again next day
+    e('f', '2026-10-31', '13:05', 'Dal', 9, 'lunch'), e('g', '2026-10-31', '13:10', 'Roti', 6, 'lunch'),
+    // an entry from before meals existed: its meal comes from its time (8 am → breakfast)
+    e('i', '2026-10-31', '08:00', 'Eggs', 18), e('j', '2026-10-31', '08:10', 'Toast', 4),
   ]
-  assert.equal(groupMeals(entries).length, 4)
-  assert.equal(mealName(at('2026-10-31', '08:00')), 'Breakfast')
-  assert.equal(mealName(at('2026-10-31', '17:00')), 'Snack')
-  assert.equal(mealName(at('2026-10-31', '23:30')), 'Dinner')
-  const recent = recentMeals(entries, '2026-10-25')
-  assert.deepEqual(recent.map((m) => [m.name, m.date, m.entries.length, m.grams]), [['Lunch', '2026-10-31', 3, 20], ['Breakfast', '2026-10-31', 2, 22]])
-  assert.equal(recentMeals(entries, '2026-10-31').length, 2)
+  const groups = groupMeals(entries)
+  assert.deepEqual(groups.map((m) => `${m.date} ${m.name} ${m.entries.length}`),
+    ['2026-10-30 Lunch 2', '2026-10-30 Dinner 2', '2026-10-31 Breakfast 2', '2026-10-31 Lunch 2'])
+  assert.deepEqual(recentMeals(entries, '2026-10-25').map((m) => `${m.date} ${m.name}`), ['2026-10-31 Lunch', '2026-10-31 Breakfast', '2026-10-30 Dinner'])
+  assert.equal(mealAt(new Date('2026-11-01T17:30:00')), 'snacks')
+  assert.equal(mealAt(new Date('2026-11-01T02:00:00')), 'dinner')
 })
 
 test('one search: generic first unless the brand is typed; your foods win ties; a logged pack shows once', () => {

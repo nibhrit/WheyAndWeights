@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useContext, useState } from 'react'
+import { SettingsContext } from '../lib/settingsContext'
 import { EVENING_HOUR, MIN_FOODS, cardioOn, groupsOn, habitsOn, proteinOn, useStore } from '../data/store'
 import { GROUPS, cardioName, effortName } from '../data/types'
 import { addDays, localDate } from '../lib/dates'
@@ -25,10 +26,11 @@ export default function Today({ onOpenExercise, onGoToLift, onGoToProtein, onGoT
   const { day, setDay, isToday } = useDay()
   const [picking, setPicking] = useState(false)
   const [showHabits, setShowHabits] = useState(false)
+  const openSettings = useContext(SettingsContext)
   const groups = groupsOn(store, day)
   const habits = habitsOn(store, day)
   const evening = new Date().getHours() >= EVENING_HOUR
-  const habitsVisible = !isToday || showHabits || !!(habits.sugar || habits.junk_food) || evening
+  const habitsVisible = !isToday || showHabits || habits.answered > 0 || evening
   const foods = proteinOn(store, day).length
 
   const lifts = store.sessions
@@ -100,7 +102,7 @@ export default function Today({ onOpenExercise, onGoToLift, onGoToProtein, onGoT
         </div>
       )}
 
-      {habitsVisible && <HabitsCard />}
+      {habitsVisible && <HabitsCard onEdit={openSettings} />}
     </>
   )
 }

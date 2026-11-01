@@ -271,8 +271,8 @@ main { gap: 12px; }
 .entry-row:has(> :nth-child(2):last-child) { grid-template-columns: minmax(0, 1fr) auto; }
 .entry-row input { height: 50px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font: inherit; font-size: 16px; padding: 0 12px; min-width: 0; }
 .icon-btn.add { font-size: 26px; font-weight: 400; color: var(--lift); }
-.grid-week { display: grid; grid-template-columns: 56px repeat(7, 1fr); gap: 8px 4px; align-items: center; justify-items: center; }
-.gw-label { justify-self: start; }
+.grid-week { display: grid; grid-template-columns: 84px repeat(7, 1fr); gap: 8px 4px; align-items: center; justify-items: center; }
+.gw-label { justify-self: start; max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gw-day.today { color: var(--lift); font-weight: 700; }
 .mini { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--line); }
 .mini.on { background: var(--lift); border-color: var(--lift); }
@@ -436,3 +436,16 @@ nav.tabs { grid-template-columns: repeat(5, 1fr); }
 /* Foods not found (TF-60) */
 .miss-list { display: flex; flex-direction: column; gap: 6px; }
 .pack-tag { margin-left: 6px; font-size: 11px; font-weight: 600; color: var(--steel); background: var(--line); border-radius: 999px; padding: 1px 7px; white-space: nowrap; }
+
+/* Your habits (TF-65) */
+.habit-name { min-width: 0; overflow-wrap: anywhere; }
+.habit-edit { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; align-items: center; }
+.habit-edit input { height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font: inherit; font-size: 16px; padding: 0 10px; min-width: 0; }
+.habit-edit .icon-btn { min-width: 36px; }
+.kind-tag { font-size: 12px; color: var(--steel); }
+
+/* Meals (TF-63) */
+.meal-picker { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.meal-picker .chips { gap: 6px; }
+.chip.small-chip { min-height: 34px; padding: 4px 12px; font-size: 13px; }
+.meal-head { align-items: baseline; margin: 4px 2px -4px; }

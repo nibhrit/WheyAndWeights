@@ -266,7 +266,10 @@ Every table carries `user_id`, and row-level security restricts each user to the
 | D18 | Reminder conditions | **Only when still relevant**, checked on the server at send time (not scheduled in advance) | A reminder for something already done teaches people to ignore reminders |
 | D19 | Reminder delivery | Web Push from a Supabase Edge Function on a 15-min pg_cron schedule; VAPID private key and cron secret only in Supabase | No extra service to run; the app stays a static site on GitHub Pages |
 | D20 | Packaged foods in search | **~8,900 Indian products inside the app** (monthly build from Open Food Facts' export), one ranked search with generic foods; live lookup only when nothing local matches | One search box was the ask; their search API allows 10 a minute, too few for as-you-type |
-| D21 | Meals | A meal = foods logged within 45 minutes on one day; "Repeat a meal" copies one to the day being viewed | No extra step when logging; meals emerge from how people already log |
+| D21 | Meals | **A meal on every food entry** (Breakfast / Lunch / Snacks / Dinner), pre-picked by time, one tap to change; Repeat copies a meal as logged | Grouping by logging time broke when lunch and dinner were logged together at night (TF-63) |
+| D22 | Zero-calorie items | Allowed in the food log when an amount is given (creatine 5 g); also possible as a habit | Supplements matter to track even though they add nothing to totals (TF-64) |
+| D23 | Habits | **Your own habits**, two kinds: Do (Done / Missed) and Avoid (Avoided / Had it); up to 10; removing keeps history; sugar and junk food become two editable Avoid habits | "Avoided / Had it" doesn't fit "Brush twice a day" (TF-65) |
+| D24 | Phone back | History step per sub-screen + own left-edge swipe; tabs aren't back steps | iPhone home-screen apps often lack Safari's swipe-back (TF-62) |
 
 ---
 

@@ -51,13 +51,17 @@ export type FoodRef = {
   portion_grams: number | null   // total grams eaten
 }
 
+export type Meal = 'breakfast' | 'lunch' | 'snacks' | 'dinner'   // helpers in lib/meals.ts
+
 export type ProteinEntry = Nutrients & FoodRef & {
   id: string
   label: string | null
   quick_add_id: string | null
   logged_at: string
   local_date: string
+  meal?: Meal | null     // null/missing only for entries saved before meals existed (then: by time logged)
 }
+
 
 export type QuickAdd = Nutrients & FoodRef & { id: string; name: string; sort_order: number }
 export type ProteinGoal = { goal_g: number; effective_from: string }
@@ -66,9 +70,16 @@ export type CalorieGoal = { goal_kcal: number; effective_from: string }
 export const DEFAULT_GOAL = 100
 export const NO_FOOD: FoodRef = { food_id: null, portion_label: null, portion_qty: null, portion_grams: null }
 
+// Old two-habit shape (before TF-65), only for changes still queued on a phone from before the update
 export type HabitResult = 'avoided' | 'had'
-export type HabitKey = 'sugar' | 'junk_food'
 export type DayHabits = { date: string; sugar: HabitResult | null; junk_food: HabitResult | null }
+
+// Your own habits (TF-65). "do": Done / Missed; "avoid": Avoided / Had it. An answer is "yes" for the good one.
+export type HabitKind = 'do' | 'avoid'
+export type Habit = { id: string; name: string; kind: HabitKind; sort_order: number; archived_at: string | null }
+export type HabitAnswer = 'yes' | 'no'
+export const ANSWERS: Record<HabitKind, [yes: string, no: string]> = { do: ['Done', 'Missed'], avoid: ['Avoided', 'Had it'] }
+export const MAX_HABITS = 10
 export type BodyWeight = { date: string; weight: number; unit: Unit }
 
 export type CardioKind = 'treadmill_run' | 'treadmill_walk' | 'cycling' | 'elliptical' | 'rowing' | 'stair_climber' | 'swimming' | 'other'

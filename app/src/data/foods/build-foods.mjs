@@ -352,6 +352,16 @@ recipe({ id: 'soya-chaap-boiled', name: 'Soya chaap, plain (boiled sticks)', ali
   notes: 'Assumes 1:1 soy flour : maida, boiled (~200 g per 100 g dry mix). Brands vary (12-20 g protein/100 g); stick weight excludes the wooden stick.' })
 single('whey-protein-concentrate', 'Whey protein, concentrate (generic)', ['whey', 'protein powder', 'whey protein', 'protein shake', 'whey scoop', 'protein scoop', 'scoop whey', '1 scoop whey'], 'whey', [P('1 scoop', 30, true), P('half scoop', 15)], 'estimate',
   EST_SRC('Whey & Weights estimate (typical 80% whey concentrate label)'), 'Mixed with water. Brands range 70-80% protein; use your tub label for exact values.')
+// Supplements with no calories (TF-64): logged by amount, add nothing to totals
+add({ id: 'creatine-monohydrate', name: 'Creatine monohydrate', aliases: ['creatine', 'creatine powder', 'creatine scoop', 'creapure'], category: 'basic',
+  per100g: { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0, added_sugar_g: 0 }, portions: [P('1 scoop (5 g)', 5, true), P('1 tsp (3 g)', 3)],
+  source: { name: 'Product labels (creatine monohydrate)', ref: 'label: 0 kcal, 0 g protein/carbs/fat per serving' }, confidence: 'measured', notes: 'Pure creatine monohydrate. Flavoured or blended products can contain sugar; use the label.' })
+add({ id: 'multivitamin-tablet', name: 'Multivitamin tablet', aliases: ['multivitamin', 'vitamin tablet', 'multi vitamin'], category: 'basic',
+  per100g: { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0, added_sugar_g: 0 }, portions: [P('1 tablet', 1.5, true)],
+  source: EST_SRC('Whey & Weights: tablets contribute negligible calories'), confidence: 'estimate', notes: 'Logged for tracking; adds nothing to totals.' })
+add({ id: 'electrolytes-sugar-free', name: 'Electrolyte drink, sugar-free', aliases: ['electrolytes', 'electral zero', 'sugar free electrolyte', 'hydration tablet', 'fast&up reload'], category: 'basic',
+  per100g: { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0, added_sugar_g: 0 }, portions: [P('1 glass (250 ml)', 250, true)],
+  source: EST_SRC('Whey & Weights estimate (typical sugar-free electrolyte label)'), confidence: 'estimate', notes: 'Sugar-free tablet or sachet in water. Regular ORS has sugar: use its label.' })
 add({ id: 'whey-protein-isolate', name: 'Whey protein, isolate (generic)', aliases: ['whey isolate', 'iso whey', 'protein powder'], category: 'basic',
   per100g: { kcal: 370, protein_g: 88, carbs_g: 2, fat_g: 1, fiber_g: 0, added_sugar_g: 0 }, portions: [P('1 scoop', 30, true)], source: EST_SRC('Whey & Weights estimate (typical 90% whey isolate label)'), confidence: 'estimate', notes: 'Mixed with water. Use your tub label for exact values.' })
 usda('peanut-butter', 'Peanut butter', ['peanut butter', 'pb', 'moongphali butter'], 'peanut_butter', [P('1 tbsp', 16, true), P('2 tbsp', 32)], 'Sweetened commercial style. Added sugar (5 g) estimated from USDA total sugars; unsweetened PB has ~0.')

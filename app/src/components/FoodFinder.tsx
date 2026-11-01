@@ -346,7 +346,6 @@ export function PortionPicker({ food, portion: initialPortion, qty: initialQty, 
   const n = nutrientsFor(food, grams)
   const ref = valid ? foodRef(food, portion, q) : null
   const about = food.confidence === 'estimate' ? 'about ' : ''
-  const empty = valid && n.grams === 0 && n.kcal === 0
 
   function choose(p: Portion | null) {
     if (p === portion) return
@@ -360,7 +359,7 @@ export function PortionPicker({ food, portion: initialPortion, qty: initialQty, 
   }
 
   return (
-    <form className="card form" noValidate onSubmit={(e) => { e.preventDefault(); if (ref && !empty) onSubmit(n, ref) }}>
+    <form className="card form" noValidate onSubmit={(e) => { e.preventDefault(); if (ref) onSubmit(n, ref) }}>
       <div className="card-top">
         <b>{food.name}</b>
         {about && <span className="about">about</span>}
@@ -397,14 +396,13 @@ export function PortionPicker({ food, portion: initialPortion, qty: initialQty, 
       ) : (
         <p className="err" role="alert">{portion ? `Enter how many, up to ${MAX_QTY}.` : `Enter grams, up to ${MAX_GRAMS}.`}</p>
       )}
-      {empty && <p className="cap empty">That rounds to nothing. Add a bit more.</p>}
 
       <div className={onDelete ? 'three' : 'two'}>
         {onDelete && <button type="button" className="link danger" onClick={onDelete}>Delete</button>}
         <button type="button" className="btn ghost" onClick={onCancel}>Cancel</button>
-        <button type="submit" className="btn" disabled={!valid || empty}>{submitLabel}</button>
+        <button type="submit" className="btn" disabled={!valid}>{submitLabel}</button>
       </div>
-      {saveQuick && ref && !empty && <SaveQuick name={`${food.name}, ${portionText(ref)}`} n={n} ref={ref} />}
+      {saveQuick && ref && <SaveQuick name={`${food.name}, ${portionText(ref)}`} n={n} ref={ref} />}
     </form>
   )
 }

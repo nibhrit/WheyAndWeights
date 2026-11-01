@@ -1,15 +1,15 @@
-import { habitsOn, setHabit, useStore } from '../data/store'
-import type { HabitKey } from '../data/types'
+import { activeHabits, habitAnswer, habitsOn, setHabitAnswer, useStore } from '../data/store'
+import { ANSWERS } from '../data/types'
 import { useDay } from '../lib/dayContext'
 
-const HABITS: [HabitKey, string][] = [['sugar', 'Sugar'], ['junk_food', 'Junk food']]
-
-// End-of-day check-in. "Avoided" is green; "Had it" is graphite (never red: a slip isn't an error).
-export default function HabitsCard() {
+// End-of-day check-in for your own habits (TF-65). The good answer (Done, Avoided) is green; the other (Missed,
+// Had it) is graphite, never red: a slip isn't an error. Tap an answer again to clear it.
+export default function HabitsCard({ onEdit }: { onEdit?: () => void }) {
   const store = useStore()
   const { day: date, isToday } = useDay()
-  const day = habitsOn(store, date)
-  const done = day.sugar && day.junk_food
+  const list = activeHabits(store)
+  const h = habitsOn(store, date)
+  const done = h.total > 0 && h.answered === h.total
 
   return (
     <div className="card form">
@@ -17,15 +17,21 @@ export default function HabitsCard() {
         <b>End of day</b>
         <span className="cap">{done ? (isToday ? 'Logged for today' : 'Logged') : isToday ? 'Log before bed' : 'Not logged'}</span>
       </div>
-      {HABITS.map(([key, label]) => (
-        <div key={key} className="habit-row">
-          <span>{label}</span>
-          <div className="seg" role="group" aria-label={label}>
-            <button className="ok" aria-pressed={day[key] === 'avoided'} onClick={() => setHabit(key, 'avoided', date)}>Avoided</button>
-            <button className="no" aria-pressed={day[key] === 'had'} onClick={() => setHabit(key, 'had', date)}>Had it</button>
+      {!list.length && <span className="cap">No habits yet.</span>}
+      {list.map((habit) => {
+        const a = habitAnswer(store, date, habit.id)
+        const [yes, no] = ANSWERS[habit.kind]
+        return (
+          <div key={habit.id} className="habit-row">
+            <span className="habit-name">{habit.name}</span>
+            <div className="seg" role="group" aria-label={habit.name}>
+              <button className="ok" aria-pressed={a === 'yes'} onClick={() => setHabitAnswer(habit.id, 'yes', date)}>{yes}</button>
+              <button className="no" aria-pressed={a === 'no'} onClick={() => setHabitAnswer(habit.id, 'no', date)}>{no}</button>
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
+      {onEdit && <button className="link small" style={{ alignSelf: 'flex-start' }} onClick={onEdit}>{list.length ? 'Edit habits' : 'Add habits'}</button>}
     </div>
   )
 }

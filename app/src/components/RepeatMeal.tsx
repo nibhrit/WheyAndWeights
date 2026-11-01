@@ -28,7 +28,7 @@ export default function RepeatMeal() {
                 <span className="cap meal-foods">{mealFoods(m)}</span>
                 <span className="cap">{m.grams} g protein{m.kcal != null ? ` · ${m.kcal} kcal` : ''}</span>
               </span>
-              <button className="btn ghost small" onClick={() => { logMeal(m.name, m.entries, day); setOpen(false) }}>Log again</button>
+              <button className="btn ghost small" onClick={() => { logMeal(m.name, m.entries, day, m.meal); setOpen(false) }}>Log again</button>
             </div>
           ))}
         </div>

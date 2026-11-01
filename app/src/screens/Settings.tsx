@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { bodyKg, clearUser, fitnessGoal, goalFor, kcalGoalFor, setWeightUnit, useStore } from '../data/store'
+import { activeHabits, addHabit, bodyKg, clearUser, moveHabit, removeHabit, updateHabit, fitnessGoal, goalFor, kcalGoalFor, setWeightUnit, useStore } from '../data/store'
 import { localDate } from '../lib/dates'
+import { ANSWERS, MAX_HABITS, type Habit, type HabitKind } from '../data/types'
 import { CalorieGoalSetting, FitnessGoalSetting, GoalSetting, SavedFoods } from '../components/ProteinSettings'
 import { PROTEIN_PER_KG, suggestedKcal } from '../lib/macros'
 import { getTheme, setTheme, type Theme } from '../lib/theme'
@@ -47,6 +48,9 @@ export default function Settings({ session, onClose }: Props) {
         Approximate, not medical advice.{' '}
         <a href={FOOD_DATA_URL} target="_blank" rel="noreferrer" style={{ color: 'var(--lift)', fontWeight: 600 }}>Food data sources</a>
       </p>
+
+      <h2 className="sec">Habits</h2>
+      <HabitsSetting habits={activeHabits(store)} />
 
       <h2 className="sec">Body weight</h2>
       <div className="card hdr">
@@ -221,5 +225,53 @@ function FoodsNotFound() {
         </div>
       )}
     </>
+  )
+}
+
+const KIND_TEXT: Record<HabitKind, string> = { do: `Do · ${ANSWERS.do.join(' / ')}`, avoid: `Avoid · ${ANSWERS.avoid.join(' / ')}` }
+
+// Your own habits (TF-65): add, rename, switch kind, reorder, remove (history kept)
+function HabitsSetting({ habits }: { habits: Habit[] }) {
+  const [name, setName] = useState('')
+  const [kind, setKind] = useState<HabitKind>('do')
+  const [error, setError] = useState<string | null>(null)
+  return (
+    <div className="card form">
+      <span className="cap">Answered at the end of each day. “Do” habits are Done / Missed (brush twice a day, creatine); “Avoid” habits are Avoided / Had it (sugar, junk food).</span>
+      {habits.map((h, i) => <HabitEditRow key={h.id} habit={h} first={i === 0} last={i === habits.length - 1} />)}
+      {habits.length < MAX_HABITS ? (
+        <form className="form" onSubmit={(e) => { e.preventDefault(); const err = addHabit(name, kind); setError(err); if (!err) setName('') }} noValidate>
+          <input className="full" placeholder="New habit, e.g. Brush twice a day" aria-label="New habit" value={name} maxLength={40}
+            onChange={(e) => { setName(e.target.value); setError(null) }} />
+          <div className="seg small" role="group" aria-label="Kind of habit">
+            <button type="button" className="pick" aria-pressed={kind === 'do'} onClick={() => setKind('do')}>Do</button>
+            <button type="button" className="pick" aria-pressed={kind === 'avoid'} onClick={() => setKind('avoid')}>Avoid</button>
+          </div>
+          {error && <p className="err" role="alert">{error}</p>}
+          <button className="btn ghost" type="submit">Add habit</button>
+        </form>
+      ) : <span className="cap">That’s {MAX_HABITS} habits, the most you can have. Remove one to add another.</span>}
+    </div>
+  )
+}
+
+function HabitEditRow({ habit, first, last }: { habit: Habit; first: boolean; last: boolean }) {
+  const [name, setName] = useState(habit.name)
+  const save = () => { if (name.trim() && name.trim() !== habit.name) updateHabit(habit.id, { name }) ; else setName(habit.name) }
+  return (
+    <div className="form" style={{ gap: 4 }}>
+      <div className="habit-edit">
+        <input aria-label={`Rename ${habit.name}`} value={name} maxLength={40} onChange={(e) => setName(e.target.value)} onBlur={save}
+          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }} />
+        <button className="icon-btn" aria-label={`Move ${habit.name} up`} disabled={first} onClick={() => moveHabit(habit.id, -1)}>↑</button>
+        <button className="icon-btn" aria-label={`Move ${habit.name} down`} disabled={last} onClick={() => moveHabit(habit.id, 1)}>↓</button>
+      </div>
+      <div className="hdr">
+        <button className="link small" onClick={() => updateHabit(habit.id, { kind: habit.kind === 'do' ? 'avoid' : 'do' })}>
+          <span className="kind-tag">{KIND_TEXT[habit.kind]}</span> · change
+        </button>
+        <button className="link small danger" onClick={() => removeHabit(habit.id)}>Remove</button>
+      </div>
+    </div>
   )
 }

@@ -171,3 +171,36 @@ const mA=(await as(A,`select outcome from food_search_misses`)).rows; (mA.length
 const mB=(await as(B,`select count(*)::int c from food_search_misses`)).rows[0].c; mB===0?ok('misses: B sees 0 of A\'s searches'):bad('B sees A misses')
 try { await as(A, `insert into food_search_misses(query,local_date,outcome) values ('Benne Dosa ','2026-11-02','ai')`); bad('unnormalised query') } catch { ok('misses: query stored trimmed and lower-case') }
 try { await as(B, `insert into food_search_misses(user_id,query,local_date,outcome) values ('${A}','xyz','2026-11-01','ai')`); bad('B wrote as A') } catch { ok('misses: B cannot write as A') }
+// TF-63/64/65: meals, zero-calorie items, own habits
+const hA=(await as(A,`select name,kind from habits order by sort_order`)).rows; JSON.stringify(hA)==='[{"name":"Sugar","kind":"avoid"},{"name":"Junk food","kind":"avoid"}]'?ok('habits: new person starts with Sugar + Junk food'):bad(JSON.stringify(hA))
+const brush=(await as(A,`insert into habits(name,kind,sort_order) values ('Brush twice a day','do',2) returning id`)).rows[0].id
+await as(A,`insert into habit_logs(habit_id,date,result) values ('${brush}','2026-11-02','yes')`)
+await as(A,`insert into habit_logs(habit_id,date,result) values ('${brush}','2026-11-02','no') on conflict (habit_id,date) do update set result=excluded.result`)
+const bl=(await as(A,`select result from habit_logs where habit_id='${brush}'`)).rows; (bl.length===1&&bl[0].result==='no')?ok('habits: one answer per habit per day, upsert replaces'):bad(JSON.stringify(bl))
+const hB=(await as(B,`select count(*)::int c from habits where user_id='${A}'`)).rows[0].c; hB===0?ok('habits: B sees 0 of A\'s habits'):bad('B sees A habits')
+try { await as(B,`insert into habit_logs(habit_id,date,result) values ('${brush}','2026-11-03','yes')`); bad('B logged A habit') } catch { ok('habits: B cannot answer A\'s habit') }
+try { await as(A,`insert into habits(name,kind) values ('Steps','count')`); bad('unknown kind') } catch { ok('habits: kind is do or avoid') }
+await as(A,`insert into protein_entries(grams,kcal,local_date,label,food_id,portion_grams,meal) values (0,0,'2026-11-02','Creatine','creatine-monohydrate',5,'breakfast')`); ok('food: zero-calorie item with an amount (creatine 5 g)')
+try { await as(A,`insert into protein_entries(grams,kcal,local_date,label) values (0,0,'2026-11-02','Nothing')`); bad('empty entry allowed') } catch { ok('food: an entry with no protein, kcal or amount is refused') }
+try { await as(A,`insert into protein_entries(grams,local_date,meal) values (10,'2026-11-02','brunch')`); bad('brunch allowed') } catch { ok('food: meal is breakfast, lunch, snacks or dinner') }
+
+// Migration check: old-style data before 20261102000000 is carried over (habits history, meals from time)
+{
+  const db2 = new PGlite()
+  await db2.exec(`create role anon; create role authenticated; create role service_role bypassrls; create schema auth;
+    create table auth.users (id uuid primary key);
+    create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;`)
+  const files = fs.readdirSync(new URL('../migrations/', import.meta.url)).sort()
+  for (const f of files.filter((f) => f < '20261102')) await db2.exec(fs.readFileSync(new URL(`../migrations/${f}`, import.meta.url), 'utf8'))
+  await db2.exec(`insert into auth.users values ('${A}');
+    insert into user_settings(user_id) values ('${A}');
+    insert into daily_habits(user_id,date,sugar,junk_food) values ('${A}','2026-10-30','avoided','had'),('${A}','2026-10-31','had',null);
+    insert into protein_entries(user_id,grams,local_date,logged_at) values ('${A}',20,'2026-10-31','2026-10-31T02:30:00Z'),('${A}',30,'2026-10-31','2026-10-31T15:00:00Z');`)
+  for (const f of files.filter((f) => f >= '20261102')) await db2.exec(fs.readFileSync(new URL(`../migrations/${f}`, import.meta.url), 'utf8'))
+  const logs = (await db2.query(`select h.name, l.date::text d, l.result from habit_logs l join habits h on h.id=l.habit_id order by d, h.sort_order`)).rows
+  JSON.stringify(logs)==='[{"name":"Sugar","d":"2026-10-30","result":"yes"},{"name":"Junk food","d":"2026-10-30","result":"no"},{"name":"Sugar","d":"2026-10-31","result":"no"}]'
+    ? ok('migration: sugar/junk history copied into habit logs') : bad(JSON.stringify(logs))
+  const meals = (await db2.query(`select grams, meal::text from protein_entries order by grams`)).rows
+  JSON.stringify(meals)==='[{"grams":20,"meal":"breakfast"},{"grams":30,"meal":"dinner"}]'
+    ? ok('migration: existing entries get a meal from their local (IST) time') : bad(JSON.stringify(meals))
+}
