@@ -3,6 +3,7 @@ import { addExercise, addStarters, lastSession, splitFor, toggleSplit, todaySess
 import { fmtSets } from '../lib/format'
 import { fmtDate } from '../lib/dates'
 import { useDay } from '../lib/dayContext'
+import { useBackStep } from '../lib/backSteps'
 import PlanWeek from './PlanWeek'
 import { GROUPS, STARTERS, type Exercise, type MuscleGroup, type Unit } from '../data/types'
 import ExerciseDetail from './ExerciseDetail'
@@ -30,6 +31,9 @@ export default function Lift({ target }: { target?: LiftTarget | null }) {
   }
 
   const open = exercises.find((e) => e.id === openId)
+  // Phone back: exercise → Lift, Plan week → Lift
+  useBackStep(!!open, () => { setOpenId(null); setRepeat(false) })
+  useBackStep(planning, () => setPlanning(false))
   if (open) return <ExerciseDetail key={open.id} exercise={open} repeat={repeat} onBack={() => { setOpenId(null); setRepeat(false) }} />
   if (planning) return <PlanWeek onBack={() => setPlanning(false)} />
 

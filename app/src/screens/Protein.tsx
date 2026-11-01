@@ -7,6 +7,7 @@ import { NO_FOOD, type Nutrients, type ProteinEntry } from '../data/types'
 import { useDay } from '../lib/dayContext'
 import { portionText } from '../lib/nutrition'
 import { macroLine, timeOf } from '../lib/format'
+import { myFoodsFrom } from '../lib/myFoods'
 import { recordMiss } from '../lib/misses'
 import { isAiFood } from '../lib/aiEstimate'
 import { useFoods } from '../lib/useFoods'
@@ -174,15 +175,17 @@ function NutrientFields({ vals, onChange }: { vals: Vals; onChange: (v: Vals) =>
 
 function EntryRow({ entry }: { entry: ProteinEntry }) {
   const foods = useFoods()
-  const [editing, setEditing] = useState(false)
-  const food = foods?.foodById(entry.food_id)
+  const [editing, setEditing] = useState<false | 'portion' | 'numbers'>(false)
+  // A list food edits by portion; so do packs, AI estimates and label foods, rebuilt from the entry's own numbers
+  const own = entry.food_id && entry.portion_grams ? myFoodsFrom([entry])[0] : undefined
+  const food = foods?.foodById(entry.food_id) ?? (own && { ...own, id: entry.food_id! })
   const ai = isAiFood(entry.food_id)
   const about = food?.confidence === 'estimate' || ai ? 'about ' : ''
 
   if (!editing) {
     const portion = portionText(entry)
     return (
-      <button className="row" onClick={() => setEditing(true)}>
+      <button className="row" onClick={() => setEditing('portion')}>
         <span className="row-main">
           <span>{entry.label ?? 'Protein'}</span>
           <span className="cap">{ai ? 'AI estimate · ' : ''}{portion ? `${portion} · ` : ''}{timeOf(entry.logged_at)}</span>
@@ -196,8 +199,8 @@ function EntryRow({ entry }: { entry: ProteinEntry }) {
     )
   }
 
-  // A food from the list is edited by its portion, so protein and calories stay consistent
-  if (food && entry.portion_grams) {
+  // Edited by its portion, so protein and calories stay consistent; the numbers form is the fallback
+  if (editing === 'portion' && food && entry.portion_grams) {
     const portion = entry.portion_label ? food.portions.find((p) => p.label === entry.portion_label) ?? null : null
     const qty = portion ? entry.portion_qty ?? 1 : entry.portion_grams
     return (
@@ -206,6 +209,7 @@ function EntryRow({ entry }: { entry: ProteinEntry }) {
         onSubmit={(n, ref) => { updateEntry(entry.id, { ...n, ...ref }); setEditing(false) }}
         onCancel={() => setEditing(false)}
         onDelete={() => deleteProtein(entry.id)}
+        note={<button type="button" className="link small" onClick={() => setEditing('numbers')}>Edit the numbers instead</button>}
       />
     )
   }

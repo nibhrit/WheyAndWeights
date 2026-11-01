@@ -15,6 +15,7 @@ import { useFoods } from '../lib/useFoods'
 import { lookupBarcode, searchPackaged } from '../lib/off'
 import { ISSUE_TEXT, OFF_SOURCE, needsLabel, type Issue, type Packaged } from '../lib/packaged'
 import Scanner from './Scanner'
+import { useBackStep } from '../lib/backSteps'
 import LabelForm, { type LabelStart } from './LabelForm'
 
 // Find a food and say how much: search the food list (or ask for an AI estimate when it isn't there), scan a pack's
@@ -57,6 +58,7 @@ export default function FoodFinder({ initialQuery = '', submitLabel, onDone, onC
   const mine = useMemo(() => myFoodsFrom([...store.protein, ...(store.ownFoods ?? [])]), [store.protein, store.ownFoods])
   const mineIndex = useMemo(() => buildIndex(mine), [mine])
   const packaged = usePackaged()
+  useBackStep(scanning, () => setScanning(false))   // phone back closes the camera
 
   // ---------- One search for everything (TF-57) ----------
   const usage = foodUsage(store.protein, localDate())

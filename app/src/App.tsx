@@ -12,6 +12,7 @@ import Toast from './components/Toast'
 import Celebration from './components/Celebration'
 import { SettingsContext } from './lib/settingsContext'
 import { DayContext, activeDay, dayLabel } from './lib/dayContext'
+import { installEdgeSwipe, useBackStep } from './lib/backSteps'
 import { clearUser, loadForUser, useStore } from './data/store'
 
 type Tab = 'today' | 'lift' | 'cardio' | 'protein' | 'week'
@@ -49,6 +50,10 @@ export default function App() {
     document.addEventListener('visibilitychange', onVisibility)
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [])
+
+  // Phone back closes Settings; left-edge swipe works where the browser gives none (iPhone home-screen app)
+  useBackStep(showSettings, () => setShowSettings(false))
+  useEffect(() => installEdgeSwipe(), [])
 
   // Each tab opens at the top
   useEffect(() => { mainRef.current?.scrollTo(0, 0) }, [tab, showSettings])
