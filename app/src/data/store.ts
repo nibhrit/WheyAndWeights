@@ -572,20 +572,12 @@ export function updateEntry(id: string, patch: Partial<NewEntry>) {
   enqueue({ kind: 'protein_save', entry })
 }
 
-// Repeat a meal (TF-59): log copies of several entries to a day, as one action with one Undo
-// The copies go into the same meal they came from
-export function logMeal(name: string, entries: ProteinEntry[], date = localDate(), meal?: Meal) {
-  const stamp = stampOn(date)
-  const copies: ProteinEntry[] = entries.map((e) => ({ ...e, id: crypto.randomUUID(), logged_at: stamp, local_date: date, meal: meal ?? e.meal ?? mealAt(new Date(e.logged_at)) }))
-  let protein = state.protein
-  for (const c of copies) { protein = upsertEntry(protein, c); enqueue({ kind: 'protein_save', entry: c }) }
-  set({ protein })
-  const g = copies.reduce((n, c) => n + c.grams, 0)
-  showToast(`Logged ${name.toLowerCase()}: ${copies.length} foods · ${g} g protein`, () => {
-    const ids = new Set(copies.map((c) => c.id))
-    set({ protein: state.protein.filter((x) => !ids.has(x.id)) })
-    for (const c of copies) enqueue({ kind: 'protein_delete', id: c.id })
-  })
+// Log a food again (TF-68): a copy of a past entry, same food and portion, to a day and meal, with Undo
+export function logAgain(e: ProteinEntry, date = localDate(), meal: Meal = mealAt()) {
+  logFood({
+    grams: e.grams, kcal: e.kcal, carbs_g: e.carbs_g, fat_g: e.fat_g, fiber_g: e.fiber_g ?? null, added_sugar_g: e.added_sugar_g ?? null,
+    food_id: e.food_id, portion_label: e.portion_label, portion_qty: e.portion_qty, portion_grams: e.portion_grams, label: e.label,
+  }, date, meal)
 }
 
 export function deleteProtein(id: string) {

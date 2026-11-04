@@ -1,5 +1,5 @@
 import { kcalEatenOn, kcalGoalFor, kcalOn, netDeficitOn, useStore } from '../../data/store'
-import { addDays } from '../../lib/dates'
+import { trendDays } from '../../lib/dayContext'
 import MiniBars from './MiniBars'
 
 const fmt = (n: number) => Math.abs(n).toLocaleString('en-IN')
@@ -11,7 +11,7 @@ export default function CaloriesCard({ date, onOpen, onSetTarget }: { date: stri
   const target = kcalGoalFor(store, date)
   const burnt = kcalOn(store, date).total
   const net = netDeficitOn(store, date)
-  const days = Array.from({ length: 7 }, (_, i) => addDays(date, i - 6))
+  const days = trendDays(date)
   const week = days.map((d) => netDeficitOn(store, d))
   const total = week.reduce<number>((a, b) => a + (b ?? 0), 0)
 
@@ -28,8 +28,9 @@ export default function CaloriesCard({ date, onOpen, onSetTarget }: { date: stri
       </button>
       {target ? (
         <div className="metric-trend">
-          <MiniBars days={days} values={week} tone="graphite" label="Net calorie deficit this week" />
-          <span className="cap">{week.every((v) => v == null) ? 'No days with food logged this week' : `This week: ${fmt(total)} kcal net ${total >= 0 ? 'deficit' : 'surplus'}`}</span>
+          <MiniBars days={days} values={week} tone="graphite" label="Net calorie deficit per day. Tap a day to open it"
+            describe={(v) => (v == null ? 'no food logged' : `${fmt(v)} kcal net ${v >= 0 ? 'deficit' : 'surplus'}`)} />
+          <span className="cap">{week.every((v) => v == null) ? 'No days with food logged these 7 days' : `7 days: ${fmt(total)} kcal net ${total >= 0 ? 'deficit' : 'surplus'}`}</span>
         </div>
       ) : (
         <button className="link small" style={{ alignSelf: 'flex-start' }} onClick={onSetTarget}>Set a calorie target to see your net deficit</button>

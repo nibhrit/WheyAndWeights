@@ -1,7 +1,7 @@
 import type { Meal, ProteinEntry } from '../data/types'
 
-// Meals for "Repeat a meal" (TF-59, TF-63): a meal is the foods logged to one meal (Breakfast, Lunch, Snacks,
-// Dinner) on one day, whenever they were logged. Pure functions, tested in tests/food.test.ts.
+// Meals (TF-63): every food entry belongs to Breakfast, Lunch, Snacks or Dinner, whenever it was logged.
+// Pure functions, tested in tests/food.test.ts.
 
 export const MEALS: [Meal, string][] = [['breakfast', 'Breakfast'], ['lunch', 'Lunch'], ['snacks', 'Snacks'], ['dinner', 'Dinner']]
 export const mealName = (m: Meal) => MEALS.find(([id]) => id === m)![1]
@@ -14,8 +14,6 @@ export function mealAt(d = new Date()): Meal {
 
 // An entry's meal; entries from before meals existed get the one their time suggests
 export const mealOf = (e: Pick<ProteinEntry, 'meal' | 'logged_at'>): Meal => e.meal ?? mealAt(new Date(e.logged_at))
-
-export const MIN_ITEMS = 2   // a single food is already one tap away as a saved food
 
 export type MealGroup = { key: string; meal: Meal; name: string; date: string; entries: ProteinEntry[]; grams: number; kcal: number | null }
 
@@ -37,19 +35,26 @@ export function groupMeals(entries: ProteinEntry[]): MealGroup[] {
   }).sort((a, b) => a.date.localeCompare(b.date) || order(a.meal) - order(b.meal))
 }
 
-// What makes two meals "the same": the same foods in the same amounts
-const signature = (entries: ProteinEntry[]) => entries
-  .map((e) => `${e.food_id ?? (e.label ?? '').toLowerCase()}×${e.portion_label ?? ''}×${e.portion_qty ?? e.portion_grams ?? e.grams}`)
-  .sort().join('|')
+// One food, however often it was logged: its food id, or its name for typed foods and AI estimates without one
+const itemKey = (e: ProteinEntry) =>
+  e.food_id && e.food_id !== 'ai:estimate' ? e.food_id : `name:${(e.label ?? '').trim().toLowerCase()}`
 
-// Recent meals worth repeating: 2+ foods, newest first, one per distinct set of foods
-export function recentMeals(entries: ProteinEntry[], fromDate: string, limit = 6): MealGroup[] {
-  const seen = new Set<string>()
-  return groupMeals(entries.filter((e) => e.local_date >= fromDate))
-    .filter((m) => m.entries.length >= MIN_ITEMS)
-    .reverse()
-    .filter((m) => { const s = signature(m.entries); if (seen.has(s)) return false; seen.add(s); return true })
-    .slice(0, limit)
+export type PastItem = { key: string; entry: ProteinEntry; count: number }
+
+// Foods you've had at this meal before (TF-68, replaces whole-meal repeat): one per food, most often first, then most
+// recent, each with the portion you had last time (`entry`, the newest). From `fromDate` on; foods already logged to
+// this meal on `day` are left out (one tap logs, so the list shows what's still to add). Unnamed typed entries are skipped.
+export function pastItems(entries: ProteinEntry[], meal: Meal, day: string, fromDate: string): PastItem[] {
+  const mine = entries.filter((e) => mealOf(e) === meal)
+  const already = new Set(mine.filter((e) => e.local_date === day).map(itemKey))
+  const by = new Map<string, PastItem>()
+  for (const e of mine) {
+    if (e.local_date < fromDate || (!e.food_id && !e.label?.trim())) continue
+    const k = itemKey(e)
+    if (already.has(k)) continue
+    const p = by.get(k)
+    if (!p) by.set(k, { key: k, entry: e, count: 1 })
+    else { p.count++; if (e.logged_at > p.entry.logged_at) p.entry = e }
+  }
+  return [...by.values()].sort((a, b) => b.count - a.count || b.entry.logged_at.localeCompare(a.entry.logged_at))
 }
-
-export const mealFoods = (m: MealGroup) => m.entries.map((e) => e.label ?? 'Protein').join(', ')

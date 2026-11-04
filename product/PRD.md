@@ -270,6 +270,9 @@ Every table carries `user_id`, and row-level security restricts each user to the
 | D22 | Zero-calorie items | Allowed in the food log when an amount is given (creatine 5 g); also possible as a habit | Supplements matter to track even though they add nothing to totals (TF-64) |
 | D23 | Habits | **Your own habits**, two kinds: Do (Done / Missed) and Avoid (Avoided / Had it); up to 10; removing keeps history; sugar and junk food become two editable Avoid habits | "Avoided / Had it" doesn't fit "Brush twice a day" (TF-65) |
 | D24 | Phone back | History step per sub-screen + own left-edge swipe; tabs aren't back steps | iPhone home-screen apps often lack Safari's swipe-back (TF-62) |
+| D25 | Repeat food | **Repeat by item, per meal**: the Food tab lists foods you've had at the meal you're logging to (most often first, last portion), one tap each; replaces whole-meal repeat | People eat some of the same things, not the exact same set (TF-68) |
+| D26 | Charts → days | Tapping a day in Today's 7-day trends (or "Open" on Week) opens that day, like the day picker; the trend window stays on the last 7 days so the chart doesn't move | Faster than the date picker when a bar shows something to check or fix (TF-69) |
+| D27 | Undo notification | Swipe down / sideways (or ✕) to dismiss; dismissing keeps the change | It covered what was behind it for 5 seconds (TF-67) |
 
 ---
 

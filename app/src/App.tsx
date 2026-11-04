@@ -14,6 +14,7 @@ import { SettingsContext } from './lib/settingsContext'
 import { DayContext, activeDay, dayLabel } from './lib/dayContext'
 import { installEdgeSwipe, useBackStep } from './lib/backSteps'
 import { clearUser, loadForUser, useStore } from './data/store'
+import { localDate } from './lib/dates'
 
 type Tab = 'today' | 'lift' | 'cardio' | 'protein' | 'week'
 
@@ -97,7 +98,7 @@ export default function App() {
         ) : tab === 'protein' ? (
           <Protein />
         ) : tab === 'week' ? (
-          <Week />
+          <Week onOpenDay={(d) => { setPicked(d === localDate() ? null : d); setTab('today') }} />
         ) : (
           <Today
             onGoToLift={() => { setLiftTarget(null); setTab('lift') }}

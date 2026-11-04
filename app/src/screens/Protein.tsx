@@ -14,7 +14,7 @@ import { useFoods } from '../lib/useFoods'
 import { SettingsContext } from '../lib/settingsContext'
 import ProteinSummary from '../components/ProteinRing'
 import QuickAdds from '../components/QuickAdds'
-import RepeatMeal from '../components/RepeatMeal'
+import PastFoods from '../components/PastFoods'
 import MealPicker from '../components/MealPicker'
 import { groupMeals, mealAt, mealOf } from '../lib/meals'
 import FoodFinder, { PortionPicker } from '../components/FoodFinder'
@@ -45,7 +45,6 @@ export default function Protein() {
       </div>
       <MealPicker value={meal} onChange={setMeal} label="Logging to" />
       <QuickAdds offerStarters meal={meal} />
-      <RepeatMeal />
       {unlinked > 0 && (
         <p className="cap nudge">
           {unlinked === 1 ? '1 saved food has' : `${unlinked} saved foods have`} no calories ·{' '}
@@ -53,6 +52,7 @@ export default function Protein() {
         </p>
       )}
       <AddFood meal={meal} />
+      <PastFoods meal={meal} />
 
       <h2 className="sec">{isToday ? 'Today’s entries' : `Entries · ${label}`}</h2>
       {meals.length ? meals.map((m) => (

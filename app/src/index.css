@@ -150,6 +150,13 @@ select, .field {
   display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px;
 }
 .toast button { color: var(--card); font-weight: 700; text-decoration: underline; padding: 8px 10px; }
+/* swipe down or sideways to dismiss (TF-67); the page doesn't scroll under the finger */
+.toast { touch-action: none; user-select: none; -webkit-user-select: none; transition: transform 0.18s ease-out, opacity 0.18s ease-out; }
+.toast.drag { transition: none; }
+.toast-msg { min-width: 0; }
+.toast-actions { display: flex; align-items: center; flex: 0 0 auto; }
+.toast .toast-x { text-decoration: none; font-weight: 400; opacity: 0.7; padding: 8px 6px; min-width: 32px; }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
 
 /* Plan week */
 .sec-row { align-items: center; margin: 6px 2px -8px; }
@@ -429,9 +436,7 @@ nav.tabs { grid-template-columns: repeat(5, 1fr); }
 .reminder-row select { width: auto; height: 40px; flex: 0 0 auto; }
 
 /* Repeat a meal (TF-59) */
-.meal-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.meal-foods { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.meal-card .btn { flex: 0 0 auto; }
+.add-plus { flex: 0 0 auto; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--chalk); color: var(--ink); font-size: 20px; font-weight: 600; }
 
 /* Foods not found (TF-60) */
 .miss-list { display: flex; flex-direction: column; gap: 6px; }
@@ -461,7 +466,10 @@ nav.tabs { grid-template-columns: repeat(5, 1fr); }
 
 .minibars { position: relative; display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; height: 56px; align-items: end; padding-bottom: 16px; }
 .minibars.two { align-items: stretch; }
-.minibar { position: relative; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+.minibar { position: relative; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding: 0; border-radius: 6px; }
+/* each bar / dot opens its day (TF-69); the day being shown gets a soft backing */
+.minibar.now, .habit-dot-col.now { background: var(--chalk); box-shadow: 0 0 0 4px var(--chalk); }
+.minibar:disabled, .habit-dot-col:disabled { cursor: default; }
 .minibars.two .minibar { justify-content: center; }
 .minibar-fill { width: 100%; max-width: 22px; border-radius: 4px 4px 2px 2px; background: var(--steel); opacity: 0.55; }
 .minibar.now .minibar-fill { opacity: 1; }
@@ -486,5 +494,6 @@ nav.tabs { grid-template-columns: repeat(5, 1fr); }
 
 .habit-week { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 4px; border-top: 1px solid var(--line); }
 .habit-dots { display: grid; grid-template-columns: repeat(7, 22px); gap: 6px; padding-bottom: 18px; }
-.habit-dot-col { position: relative; display: flex; justify-content: center; }
+.habit-dot-col { position: relative; display: flex; justify-content: center; padding: 3px 0; border-radius: 6px; }
+.habit-dot-col.now .minibar-day { color: var(--ink); font-weight: 700; }
 .habit-dot-col .minibar-day { bottom: -19px; }

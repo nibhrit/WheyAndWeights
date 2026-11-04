@@ -50,6 +50,8 @@ export function installEdgeSwipe() {
   let start: { x: number; y: number; at: number; depth: number } | null = null
   const down = (e: TouchEvent) => {
     const t = e.touches[0]
+    // a swipe on the undo notification dismisses it (TF-67), it isn't a back swipe
+    if ((e.target as Element | null)?.closest?.('.toast')) { start = null; return }
     start = e.touches.length === 1 && t.clientX <= EDGE && stack.length ? { x: t.clientX, y: t.clientY, at: Date.now(), depth: stack.length } : null
   }
   const up = (e: TouchEvent) => {

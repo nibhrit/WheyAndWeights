@@ -7,8 +7,10 @@ import type { BodyWeight, Unit } from '../data/types'
 import { addDays, fmtDate, fmtDay, localDate, weekDays, weekStart } from '../lib/dates'
 import { fmtWeight } from '../lib/format'
 import TrendChart from '../components/TrendChart'
+import { canOpen, dayLabel } from '../lib/dayContext'
 
-export default function Week() {
+// onOpenDay: show a day on Today (TF-69), from the day picked in a chart
+export default function Week({ onOpenDay }: { onOpenDay: (d: string) => void }) {
   const store = useStore()
   const today = localDate()
   const days = weekDays(weekStart(today))
@@ -31,8 +33,8 @@ export default function Week() {
       <HabitGrid days={days} today={today} />
       <p className="cap legend">Filled: done or avoided · Ring: missed or had it · Dashed: not logged</p>
 
-      <ProteinCard />
-      <KcalCard days={days} today={today} />
+      <ProteinCard onOpenDay={onOpenDay} />
+      <KcalCard days={days} today={today} onOpenDay={onOpenDay} />
       <BodyWeightCard />
     </>
   )
@@ -82,7 +84,7 @@ function HabitGrid({ days, today }: { days: string[]; today: string }) {
 
 // Calories eaten vs estimated calories burnt per day this week, on one kcal axis.
 // Both graphite (blue/yellow/green are taken): eaten = solid bar, burnt = outlined bar; dashed line = today's target.
-function KcalCard({ days, today }: { days: string[]; today: string }) {
+function KcalCard({ days, today, onOpenDay }: { days: string[]; today: string; onOpenDay: (d: string) => void }) {
   const store = useStore()
   const [active, setActive] = useState(today)
   const rows = days.map((d) => ({ d, eaten: kcalEatenOn(store, d), burnt: kcalOn(store, d), goal: kcalGoalFor(store, d) }))
@@ -106,6 +108,7 @@ function KcalCard({ days, today }: { days: string[]; today: string }) {
         {shown.goal ? ` of ${shown.goal}` : ''} · about {shown.burnt.total} burnt
         {shown.burnt.total > 0 && ` (cardio ${shown.burnt.cardio}, lifting ${shown.burnt.lifting})`}
       </span>
+      <OpenDay d={shown.d} onOpenDay={onOpenDay} />
       <div className="bars kcal" role="img" aria-label={`Calories eaten and burnt per day this week. Average eaten ${avg} a day, about ${burntWeek} burnt in total.`}>
         {rows.map((r) => (
           <button key={r.d} className={`bar-hit${r.d === shown.d ? ' active' : ''}`} disabled={r.d > today}
@@ -126,7 +129,7 @@ function KcalCard({ days, today }: { days: string[]; today: string }) {
   )
 }
 
-function ProteinCard() {
+function ProteinCard({ onOpenDay }: { onOpenDay: (d: string) => void }) {
   const store = useStore()
   const today = localDate()
   const [range, setRange] = useState<7 | 30>(7)
@@ -148,6 +151,7 @@ function ProteinCard() {
         </div>
       </div>
       <span className="cap"><span className="trend-read">{fmtDate(shown.d)}: <b>{shown.total} g</b></span> of {shown.goal} g · goal hit {hits} of {range} days</span>
+      <OpenDay d={shown.d} onOpenDay={onOpenDay} />
       <div className={`bars${range === 30 ? ' dense' : ''}`} role="img" aria-label={`Protein per day, last ${range} days. Goal hit on ${hits} days.`}>
         {rows.map((r) => (
           <button
@@ -165,6 +169,13 @@ function ProteinCard() {
       )}
     </div>
   )
+}
+
+// Tapping a bar shows its numbers here; this opens that day on Today (last 7 days only, like the day picker)
+function OpenDay({ d, onOpenDay }: { d: string; onOpenDay: (d: string) => void }) {
+  if (!canOpen(d)) return null
+  const l = dayLabel(d)
+  return <button className="link small" style={{ alignSelf: 'flex-start' }} onClick={() => onOpenDay(d)}>Open {/^(Today|Yesterday)$/.test(l) ? l.toLowerCase() : l} →</button>
 }
 
 const LB = 0.45359237

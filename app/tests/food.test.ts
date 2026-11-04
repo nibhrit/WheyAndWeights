@@ -304,10 +304,10 @@ test('reminders: only sent when still relevant', () => {
   assert.equal(messageFor('workout', { ...f, planned: false }), null)
 })
 
-// ---------- Repeat a meal (TF-59, TF-63) ----------
-import { groupMeals, mealAt, recentMeals } from '../src/lib/meals.ts'
+// ---------- Meals (TF-63) and past foods per meal (TF-68) ----------
+import { groupMeals, mealAt, pastItems } from '../src/lib/meals.ts'
 
-test('meals: grouped by the meal picked, not by when it was logged; repeats shown once, newest first', () => {
+test('meals: grouped by the meal picked, not by when it was logged; past foods per meal, most often first', () => {
   const at = (d: string, hm: string) => new Date(`${d}T${hm}:00`).toISOString()
   const e = (id: string, d: string, hm: string, label: string, grams: number, meal?: 'breakfast' | 'lunch' | 'snacks' | 'dinner') => ({
     id, label, local_date: d, logged_at: at(d, hm), grams, kcal: grams * 10, quick_add_id: null, carbs_g: null, fat_g: null, fiber_g: null,
@@ -325,7 +325,16 @@ test('meals: grouped by the meal picked, not by when it was logged; repeats show
   const groups = groupMeals(entries)
   assert.deepEqual(groups.map((m) => `${m.date} ${m.name} ${m.entries.length}`),
     ['2026-10-30 Lunch 2', '2026-10-30 Dinner 2', '2026-10-31 Breakfast 2', '2026-10-31 Lunch 2'])
-  assert.deepEqual(recentMeals(entries, '2026-10-25').map((m) => `${m.date} ${m.name}`), ['2026-10-31 Lunch', '2026-10-31 Breakfast', '2026-10-30 Dinner'])
+  // Lunch on 1 Nov: dal and roti twice before, so first; nothing from other meals
+  const extra = [e('k', '2026-10-29', '13:00', 'Curd', 3, 'lunch'), e('l', '2026-10-29', '13:00', 'Dal', 9, 'lunch')]
+  const lunch = pastItems([...entries, ...extra], 'lunch', '2026-11-01', '2026-10-01')
+  assert.deepEqual(lunch.map((p) => `${p.entry.label} ${p.count}`), ['Dal 3', 'Roti 2', 'Curd 1'])
+  assert.equal(lunch[0].entry.id, 'f')   // the portion from the latest time
+  // already had dal at lunch today: left out; too old: left out
+  const today = e('m', '2026-11-01', '13:00', 'Dal', 9, 'lunch')
+  assert.deepEqual(pastItems([...entries, ...extra, today], 'lunch', '2026-11-01', '2026-10-30').map((p) => p.entry.label), ['Roti'])
+  // breakfast from before meals existed counts by its time
+  assert.deepEqual(pastItems(entries, 'breakfast', '2026-11-01', '2026-10-01').map((p) => p.entry.label), ['Toast', 'Eggs'])
   assert.equal(mealAt(new Date('2026-11-01T17:30:00')), 'snacks')
   assert.equal(mealAt(new Date('2026-11-01T02:00:00')), 'dinner')
 })

@@ -1,7 +1,7 @@
 import { activeHabits, habitAnswer, habitsOn, setHabitAnswer, useStore } from '../data/store'
 import { ANSWERS } from '../data/types'
-import { useDay } from '../lib/dayContext'
-import { addDays, fmtDay } from '../lib/dates'
+import { canOpen, trendDays, useDay } from '../lib/dayContext'
+import { fmtDate, fmtDay, localDate } from '../lib/dates'
 
 // End-of-day check-in for your own habits (TF-65). The good answer (Done, Avoided) is green; the other (Missed,
 // Had it) is graphite, never red: a slip isn't an error. Tap an answer again to clear it.
@@ -41,14 +41,22 @@ export default function HabitsCard({ onEdit, trend = false }: { onEdit?: () => v
 
 function HabitWeek({ date }: { date: string }) {
   const store = useStore()
-  const days = Array.from({ length: 7 }, (_, i) => addDays(date, i - 6))
+  const { setDay } = useDay()
+  const today = localDate()
+  const days = trendDays(date)
   const state = days.map((d) => { const h = habitsOn(store, d); return !h.answered ? 'none' : h.good === h.total ? 'ok' : 'had' })
   const kept = state.filter((x) => x === 'ok').length
+  const said = { ok: 'all habits kept', had: 'some missed', none: 'not logged' }
+  // Each dot opens its day, like the day picker (TF-69)
   return (
     <div className="habit-week">
-      <div className="habit-dots" role="img" aria-label={`All habits kept on ${kept} of the last 7 days`}>
+      <div className="habit-dots" role="group" aria-label={`All habits kept on ${kept} of these 7 days. Tap a day to open it`}>
         {days.map((d, i) => (
-          <span key={d} className="habit-dot-col"><span className={`mini ${state[i]}`} /><span className="minibar-day">{fmtDay(d).slice(0, 1)}</span></span>
+          <button key={d} type="button" className={`habit-dot-col${d === date ? ' now' : ''}`} disabled={!canOpen(d, today)}
+            aria-pressed={d === date} aria-label={`${fmtDay(d)} ${fmtDate(d)}, ${said[state[i] as keyof typeof said]}`}
+            onClick={() => setDay(d === today ? null : d)}>
+            <span className={`mini ${state[i]}`} /><span className="minibar-day">{fmtDay(d).slice(0, 1)}</span>
+          </button>
         ))}
       </div>
       <span className="cap">All habits kept {kept}/7</span>
