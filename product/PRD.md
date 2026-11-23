@@ -275,6 +275,7 @@ Every table carries `user_id`, and row-level security restricts each user to the
 | D27 | Undo notification | Swipe down / sideways (or ✕) to dismiss; dismissing keeps the change | It covered what was behind it for 5 seconds (TF-67) |
 | D28 | Day switcher | `‹ [ date ▾ ] ›` bar under Today's title: arrows step a day, the date opens the phone's own picker (last 7 days) | The chip row looked cluttered (TF-72) |
 | D29 | More cardio | Skipping, HIIT and circuit training, each with easy / moderate / hard MET values; tab stays "Cardio" | No way to log skipping (TF-73) |
+| D30 | Cardio measures | Skipping in skips (pace by effort, minutes optional); HIIT and circuits in rounds × work / rest seconds; minutes worked out so calories use one method | Skipping and intervals aren't thought of in minutes (TF-74) |
 
 ---
 
