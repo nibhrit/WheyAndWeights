@@ -120,7 +120,15 @@ nav.tabs svg { width: 22px; height: 22px; }
 .sec { margin: 6px 2px -4px; font-size: 13px; font-weight: 600; color: var(--steel); }
 .group { display: flex; flex-direction: column; gap: 10px; }
 .row.disclose { font-weight: 600; }
-.date-btn { color: var(--steel); font-size: 13px; padding: 10px 4px; min-height: 44px; }
+/* Today's day switcher (TF-72): ‹ [ Wed 4 Nov ▾ ] ›. A real <select> sits invisibly over the face, so phones show
+   their own picker, while the face shows just the date */
+.day-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--card); border-radius: 14px; padding: 4px; }
+.day-nav .day-arrow { margin: 0; font-size: 28px; line-height: 1; color: var(--ink); }
+.day-select { position: relative; flex: 1; display: flex; justify-content: center; }
+.day-select select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.day-select-face { font-weight: 600; font-size: 16px; padding: 10px 12px; pointer-events: none; }
+.day-select-face .chev { color: var(--steel); font-size: 13px; margin-left: 4px; }
+.day-select:focus-within .day-select-face { outline: 2px solid var(--lift); outline-offset: 2px; border-radius: 10px; }
 .row.disclose .chev { color: var(--steel); font-size: 14px; }
 .list { display: flex; flex-direction: column; gap: 8px; }
 .row {
