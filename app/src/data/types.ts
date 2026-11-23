@@ -82,14 +82,15 @@ export const ANSWERS: Record<HabitKind, [yes: string, no: string]> = { do: ['Don
 export const MAX_HABITS = 10
 export type BodyWeight = { date: string; weight: number; unit: Unit }
 
-export type CardioKind = 'treadmill_run' | 'treadmill_walk' | 'cycling' | 'elliptical' | 'rowing' | 'stair_climber' | 'swimming' | 'other'
+export type CardioKind = 'treadmill_run' | 'treadmill_walk' | 'cycling' | 'elliptical' | 'rowing' | 'stair_climber' | 'swimming'
+  | 'skipping' | 'hiit' | 'circuit' | 'other'
 export type Effort = 'easy' | 'moderate' | 'hard'
 export type Cardio = { id: string; kind: CardioKind; minutes: number; effort: Effort; performed_at: string; local_date: string }
 
 export const CARDIO_KINDS: [CardioKind, string][] = [
   ['treadmill_run', 'Treadmill run'], ['treadmill_walk', 'Treadmill walk'], ['cycling', 'Cycling'],
   ['elliptical', 'Elliptical'], ['rowing', 'Rowing'], ['stair_climber', 'Stair climber'],
-  ['swimming', 'Swimming'], ['other', 'Other'],
+  ['swimming', 'Swimming'], ['skipping', 'Skipping'], ['hiit', 'HIIT'], ['circuit', 'Circuit training'], ['other', 'Other'],
 ]
 export const cardioName = (k: CardioKind) => CARDIO_KINDS.find(([id]) => id === k)?.[1] ?? 'Cardio'
 export const EFFORTS: [Effort, string][] = [['easy', 'Easy'], ['moderate', 'Moderate'], ['hard', 'Hard']]

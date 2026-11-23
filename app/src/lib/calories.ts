@@ -13,6 +13,9 @@ export const CARDIO_MET: Record<CardioKind, Record<Effort, number>> = {
   rowing:         { easy: 4.8, moderate: 7.0, hard: 8.5 },
   stair_climber:  { easy: 6.8, moderate: 9.0, hard: 10.5 },
   swimming:       { easy: 5.8, moderate: 8.3, hard: 10.0 },
+  skipping:       { easy: 8.8, moderate: 11.8, hard: 12.3 },  // jump rope: slow, 100–120, 120–160 skips a minute
+  hiit:           { easy: 6.0, moderate: 8.0, hard: 9.5 },    // intervals with rest; the minutes include the rests
+  circuit:        { easy: 4.3, moderate: 6.0, hard: 8.0 },    // circuits / kettlebells with little rest
   other:          { easy: 3.5, moderate: 5.0, hard: 7.0 },
 }
 

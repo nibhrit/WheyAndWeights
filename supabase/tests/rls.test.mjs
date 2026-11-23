@@ -74,7 +74,9 @@ await as(A, `insert into cardio_sessions(id,kind,minutes,effort,local_date) valu
 const cr=(await as(A,`select minutes from cardio_sessions`)).rows; (cr.length===1&&cr[0].minutes===35)?ok('cardio: upsert by id replaces'):bad(JSON.stringify(cr))
 const crB=(await as(B,`select count(*)::int c from cardio_sessions`)).rows[0].c; crB===0?ok('cardio: B sees 0 of A\'s sessions'):bad('B sees A cardio')
 try { await as(A, `insert into cardio_sessions(kind,minutes,local_date) values ('cycling',0,'2026-10-19')`); bad('0 minutes allowed') } catch { ok('cardio: minutes must be 1 to 600') }
-try { await as(A, `insert into cardio_sessions(kind,minutes,local_date) values ('skipping',10,'2026-10-19')`); bad('unknown kind allowed') } catch { ok('cardio: unknown type refused') }
+try { await as(A, `insert into cardio_sessions(kind,minutes,local_date) values ('teleporting',10,'2026-10-19')`); bad('unknown kind allowed') } catch { ok('cardio: unknown type refused') }
+for (const k of ['skipping', 'hiit', 'circuit']) { await as(A, `insert into cardio_sessions(kind,minutes,effort,local_date) values ('${k}',15,'hard','2026-10-20')`) }
+const nk=(await as(A,`select count(*)::int c from cardio_sessions where kind in ('skipping','hiit','circuit')`)).rows[0].c; nk===3?ok('cardio: skipping, HIIT, circuit accepted (TF-73)'):bad('new kinds '+nk)
 await db.exec('set role anon'); try { await db.query('select * from cardio_sessions'); bad('anon read cardio') } catch { ok('cardio: anon cannot read') } finally { await db.exec('reset role') }
 try { await as(A, `insert into protein_goals(goal_g,effective_from) values (5,'2026-10-16')`); bad('goal 5 allowed') } catch { ok('goal bounds enforced') }
 // anon gets nothing
