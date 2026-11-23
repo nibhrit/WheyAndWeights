@@ -273,6 +273,8 @@ Every table carries `user_id`, and row-level security restricts each user to the
 | D25 | Repeat food | **Repeat by item, per meal**: the Food tab lists foods you've had at the meal you're logging to (most often first, last portion), one tap each; replaces whole-meal repeat | People eat some of the same things, not the exact same set (TF-68) |
 | D26 | Charts → days | Tapping a day in Today's 7-day trends (or "Open" on Week) opens that day, like the day picker; the trend window stays on the last 7 days so the chart doesn't move | Faster than the date picker when a bar shows something to check or fix (TF-69) |
 | D27 | Undo notification | Swipe down / sideways (or ✕) to dismiss; dismissing keeps the change | It covered what was behind it for 5 seconds (TF-67) |
+| D28 | Day switcher | `‹ [ date ▾ ] ›` bar under Today's title: arrows step a day, the date opens the phone's own picker (last 7 days) | The chip row looked cluttered (TF-72) |
+| D29 | More cardio | Skipping, HIIT and circuit training, each with easy / moderate / hard MET values; tab stays "Cardio" | No way to log skipping (TF-73) |
 
 ---
 
