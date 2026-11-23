@@ -6,10 +6,11 @@ import {
   type LiftSet, type MuscleGroup, type Nutrients, type ProteinEntry, type ProteinGoal, type QuickAdd,
   type Session, type Settings, type Splits, type Unit,
 } from './types'
-import type { CardioKind, Effort } from './types'
+import type { CardioKind, CardioMeasures, Effort } from './types'
 import { addDays, localDate } from '../lib/dates'
 import { mealAt } from '../lib/meals'
 import { DEFAULT_BODY_KG, cardioKcal, liftKcal } from '../lib/calories'
+import { measureText } from '../lib/cardioMeasures'
 
 // One shared store for the signed-in user's data.
 // Reads show the last known data instantly (cached on the device), then refresh from Supabase.
@@ -125,7 +126,7 @@ export async function loadForUser(id: string) {
     supabase.from('habits').select('id,name,kind,sort_order,archived_at').order('sort_order'),
     supabase.from('habit_logs').select('habit_id,date,result').gte('date', addDays(today, -100)),
     supabase.from('body_weights').select('date,weight,unit').gte('date', addDays(today, -400)).order('date'),
-    supabase.from('cardio_sessions').select('id,kind,minutes,effort,performed_at,local_date')
+    supabase.from('cardio_sessions').select('id,kind,minutes,effort,performed_at,local_date,skips,rounds,work_s,rest_s')
       .gte('local_date', addDays(today, -120)).order('performed_at'),
   ])
   if (ex.error || st.error || !sp || ss.error || pe.error || qa.error || pg.error || kg.error || hd.error || hb.error || bw.error || cd.error) {
@@ -804,17 +805,18 @@ const upsertCardio = (list: Cardio[], c: Cardio) =>
 
 export const cardioOn = (s: State, date: string) => s.cardio.filter((c) => c.local_date === date)
 
-export function logCardio(kind: CardioKind, minutes: number, effort: Effort, date = localDate()) {
-  const entry: Cardio = { id: crypto.randomUUID(), kind, minutes, effort, performed_at: stampOn(date), local_date: date }
+// measures: skips, or rounds of work / rest (TF-74); minutes is always given (worked out from them if not typed)
+export function logCardio(kind: CardioKind, minutes: number, effort: Effort, date = localDate(), measures: CardioMeasures = {}) {
+  const entry: Cardio = { id: crypto.randomUUID(), kind, minutes, effort, performed_at: stampOn(date), local_date: date, ...measures }
   set({ cardio: upsertCardio(state.cardio, entry) })
   enqueue({ kind: 'cardio_save', entry })
-  showToast(`Logged ${minutes} min`, () => {
+  showToast(`Logged ${measureText(entry)}`, () => {
     set({ cardio: state.cardio.filter((x) => x.id !== entry.id) })
     enqueue({ kind: 'cardio_delete', id: entry.id })
   })
 }
 
-export function updateCardio(id: string, patch: Partial<Pick<Cardio, 'kind' | 'minutes' | 'effort'>>) {
+export function updateCardio(id: string, patch: Partial<Pick<Cardio, 'kind' | 'minutes' | 'effort'>> & CardioMeasures) {
   const c = state.cardio.find((x) => x.id === id)
   if (!c) return
   const entry = { ...c, ...patch }

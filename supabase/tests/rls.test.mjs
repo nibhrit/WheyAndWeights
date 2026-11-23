@@ -77,6 +77,11 @@ try { await as(A, `insert into cardio_sessions(kind,minutes,local_date) values (
 try { await as(A, `insert into cardio_sessions(kind,minutes,local_date) values ('teleporting',10,'2026-10-19')`); bad('unknown kind allowed') } catch { ok('cardio: unknown type refused') }
 for (const k of ['skipping', 'hiit', 'circuit']) { await as(A, `insert into cardio_sessions(kind,minutes,effort,local_date) values ('${k}',15,'hard','2026-10-20')`) }
 const nk=(await as(A,`select count(*)::int c from cardio_sessions where kind in ('skipping','hiit','circuit')`)).rows[0].c; nk===3?ok('cardio: skipping, HIIT, circuit accepted (TF-73)'):bad('new kinds '+nk)
+await as(A, `insert into cardio_sessions(kind,minutes,effort,local_date,skips) values ('skipping',5,'moderate','2026-10-21',500)`)
+await as(A, `insert into cardio_sessions(kind,minutes,effort,local_date,rounds,work_s,rest_s) values ('hiit',8,'hard','2026-10-21',8,40,20)`)
+const ms=(await as(A,`select skips,rounds,work_s,rest_s from cardio_sessions where local_date='2026-10-21' order by kind`)).rows; (ms.length===2&&ms.some(r=>r.skips===500)&&ms.some(r=>r.rounds===8&&r.work_s===40&&r.rest_s===20))?ok('cardio: skips and rounds of work/rest saved (TF-74)'):bad(JSON.stringify(ms))
+try { await as(A, `insert into cardio_sessions(kind,minutes,local_date,rounds) values ('hiit',8,'2026-10-21',8)`); bad('rounds without timings allowed') } catch { ok('cardio: rounds need work and rest times') }
+try { await as(A, `insert into cardio_sessions(kind,minutes,local_date,skips) values ('skipping',5,'2026-10-21',0)`); bad('0 skips allowed') } catch { ok('cardio: skips must be 1 or more') }
 await db.exec('set role anon'); try { await db.query('select * from cardio_sessions'); bad('anon read cardio') } catch { ok('cardio: anon cannot read') } finally { await db.exec('reset role') }
 try { await as(A, `insert into protein_goals(goal_g,effective_from) values (5,'2026-10-16')`); bad('goal 5 allowed') } catch { ok('goal bounds enforced') }
 // anon gets nothing

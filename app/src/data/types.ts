@@ -85,7 +85,10 @@ export type BodyWeight = { date: string; weight: number; unit: Unit }
 export type CardioKind = 'treadmill_run' | 'treadmill_walk' | 'cycling' | 'elliptical' | 'rowing' | 'stair_climber' | 'swimming'
   | 'skipping' | 'hiit' | 'circuit' | 'other'
 export type Effort = 'easy' | 'moderate' | 'hard'
-export type Cardio = { id: string; kind: CardioKind; minutes: number; effort: Effort; performed_at: string; local_date: string }
+// How a session was measured (TF-74): skipping in skips, HIIT and circuits in rounds of work / rest, the rest in minutes.
+// minutes is always set (worked out from the measures when not typed), so calories are estimated the same way.
+export type CardioMeasures = { skips?: number | null; rounds?: number | null; work_s?: number | null; rest_s?: number | null }
+export type Cardio = CardioMeasures & { id: string; kind: CardioKind; minutes: number; effort: Effort; performed_at: string; local_date: string }
 
 export const CARDIO_KINDS: [CardioKind, string][] = [
   ['treadmill_run', 'Treadmill run'], ['treadmill_walk', 'Treadmill walk'], ['cycling', 'Cycling'],

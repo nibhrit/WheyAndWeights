@@ -505,3 +505,10 @@ nav.tabs { grid-template-columns: repeat(5, 1fr); }
 .habit-dot-col { position: relative; display: flex; justify-content: center; padding: 3px 0; border-radius: 6px; }
 .habit-dot-col.now .minibar-day { color: var(--ink); font-weight: 700; }
 .habit-dot-col .minibar-day { bottom: -19px; }
+
+/* Cardio measures (TF-74): skips, or rounds / work / rest side by side */
+.measure-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.measure-grid.two-col { grid-template-columns: 1fr 1fr; }
+.measure-grid label { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.measure-grid input { height: 50px; width: 100%; min-width: 0; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font-size: 16px; padding: 0 12px; }
+.seg-sub { display: block; font-size: 11px; font-weight: 500; opacity: 0.8; }

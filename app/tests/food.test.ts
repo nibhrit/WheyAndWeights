@@ -355,3 +355,27 @@ test('one search: generic first unless the brand is typed; your foods win ties; 
   assert.equal(greek.filter((h) => h.food.id === 'off:8906059635021').length, 1)
   assert.equal(greek[0].source, 'mine')
 })
+
+// ---------- Cardio measures (TF-74) ----------
+import { formInput, measureText, resolveCardio } from '../src/lib/cardioMeasures.ts'
+
+test('cardio measures: skips give minutes at the effort pace; rounds add up work and rest; others need minutes', () => {
+  const skip = resolveCardio('skipping', 'moderate', { ...formInput('skipping'), skips: '550' })
+  assert.deepEqual(skip, { minutes: 5, measures: { skips: 550, rounds: null, work_s: null, rest_s: null } })
+  // typed minutes win
+  assert.equal((resolveCardio('skipping', 'moderate', { ...formInput('skipping'), skips: '550', minutes: '8' }) as { minutes: number }).minutes, 8)
+  assert.ok('error' in resolveCardio('skipping', 'easy', formInput('skipping')))
+  // HIIT defaults: 8 × 40 s / 20 s = 8 min
+  const hiit = resolveCardio('hiit', 'hard', formInput('hiit'))
+  assert.deepEqual(hiit, { minutes: 8, measures: { skips: null, rounds: 8, work_s: 40, rest_s: 20 } })
+  assert.equal(measureText({ minutes: 8, rounds: 8, work_s: 40, rest_s: 20 }), '8 × 40 s on / 20 s off')
+  assert.equal(measureText({ minutes: 18, rounds: 3, work_s: 300, rest_s: 60 }), '3 × 5 min on / 1 min off')
+  assert.equal(measureText({ minutes: 5, skips: 1200 }), '1,200 skips')
+  assert.ok('error' in resolveCardio('circuit', 'easy', { ...formInput('circuit'), work_s: '2' }))
+  assert.ok('error' in resolveCardio('cycling', 'easy', formInput('cycling')))
+  assert.equal((resolveCardio('cycling', 'easy', { ...formInput('cycling'), minutes: '30' }) as { minutes: number }).minutes, 30)
+  // editing: skipping minutes show only if they were typed (differ from the estimate)
+  assert.equal(formInput('skipping', { minutes: 5, effort: 'moderate', skips: 550 }).minutes, '')
+  assert.equal(formInput('skipping', { minutes: 8, effort: 'moderate', skips: 550 }).minutes, '8')
+  assert.equal(formInput('cycling', { minutes: 30, effort: 'easy' }).minutes, '30')
+})
